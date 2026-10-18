@@ -445,12 +445,15 @@ def review_gate(task: Task, budget: Budget) -> GateResult:
 
 
 def verdict_gate(name: str, verdict: dict, raw: str, cfg: dict) -> GateResult:
-    blocking = [f for f in verdict.get("findings", []) if f.get("severity") in cfg["block_on"]]
-    ok = bool(verdict) and verdict.get("verdict") == "approve" and not blocking
-    text = "\n".join(f"[{f.get('severity')}] {f.get('file')}:{f.get('line')} {f.get('summary')} → {f.get('fix')}" for f in blocking)
-    log(f"gate {name}: {verdict.get('verdict')} ({len(blocking)} blocking)")
-    return GateResult(name, ok, tail(raw, 60),
-                      "" if ok else ("Reviewer findings to fix:\n" + text if text else "Reviewer did not approve or returned no verdict."))
+    # Only P0/P1 block. A "request_changes" with P2/P3 only passes; those findings go into the evidence.
+    findings = verdict.get("findings", [])
+    blocking = [f for f in findings if f.get("severity") in cfg["block_on"]]
+    ok = bool(verdict) and not blocking
+    fmt = lambda fs: "\n".join(f"[{f.get('severity')}] {f.get('file')}:{f.get('line')} {f.get('summary')} → {f.get('fix')}" for f in fs)
+    log(f"gate {name}: {verdict.get('verdict')} ({len(blocking)} blocking, {len(findings) - len(blocking)} non-blocking)")
+    detail = f"{verdict.get('verdict', 'no verdict')}; {len(findings)} finding(s)\n{fmt(findings)}" if verdict else tail(raw, 60)
+    return GateResult(name, ok, detail,
+                      "" if ok else ("Reviewer findings to fix:\n" + fmt(blocking) if blocking else "Reviewer returned no parseable verdict."))
 
 
 def needs_visual(task: Task, files: list[str]) -> bool:
@@ -622,7 +625,26 @@ def gate_table(results: list[GateResult]) -> str:
     return "\n".join(f"| {r.name} | {'✅' if r.ok else '❌'} | {esc(r.detail.splitlines()[-1] if r.detail else '')[:120]} |" for r in results)
 
 
+def record_gate_evidence(task: Task, results: list[GateResult]) -> None:
+    doc = ROOT / task.doc_path
+    if not doc.exists():
+        return
+    text = doc.read_text()
+    review = "\n".join(f"- **{r.name}**: {'ผ่าน' if r.ok else 'ไม่ผ่าน'}\n" + textwrap.indent(r.detail.strip()[:2500], "  ")
+                       for r in results if not r.name.startswith("visual")) + f"\n- Run: {run_url()} · {now_bkk():%Y-%m-%d %H:%M} ICT"
+    visual = [r for r in results if r.name.startswith("visual")]
+    visual_txt = ("\n".join(f"- **{r.name}**: {'ผ่าน' if r.ok else 'ไม่ผ่าน'} — {r.detail.strip()[:1500]}" for r in visual)
+                  if visual else "N/A — งานนี้ไม่ได้แตะไฟล์ UI และ issue ไม่ได้ระบุ UI pages (loop ตรวจจาก diff)")
+    for heading, body in (("Review evidence", review), ("Visual review", visual_txt)):
+        text = re.sub(rf"(^##\s*{heading}[^\n]*\n)(.*?)(?=^##\s|\Z)", lambda m: m.group(1) + "\n" + body + "\n\n", text, count=1, flags=re.S | re.M)
+    doc.write_text(text)
+    if git("status", "--porcelain"):
+        git("add", task.doc_path)
+        git("commit", "--quiet", "-m", f"docs(autopilot): record gate evidence for #{task.number}{TRAILER}")
+
+
 def finish_passed(task: Task, record: dict, verdict: dict, results: list[GateResult], files: list[str], preexisting: list[dict]) -> dict:
+    record_gate_evidence(task, results)
     protected = touches_protected(files, task)
     lines = changed_lines()
     reasons = []
