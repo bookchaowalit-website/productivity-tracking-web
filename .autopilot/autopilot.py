@@ -514,7 +514,8 @@ def visual_gate(task: Task, budget: Budget, baseline: dict) -> tuple[GateResult,
             wt = WORK / "baseline"
             if wt.exists():
                 run(["git", "worktree", "remove", "--force", str(wt)])
-            git("worktree", "add", "--detach", str(wt), BASE)
+            git("worktree", "prune")  # a deleted baseline dir stays registered otherwise
+            git("worktree", "add", "--force", "--detach", str(wt), BASE)
             baseline["counts"], baseline["md"] = capture(wt, cfg["port"] + 1, pages, WORK / "shots-base")
             baseline["shots"] = str(WORK / "shots-base")
         shots = WORK / f"shots-{task.number}"
