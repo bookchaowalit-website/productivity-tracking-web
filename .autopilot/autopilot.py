@@ -143,12 +143,17 @@ def telegram(event: str, text: str) -> None:
         "chat_id": chat, "parse_mode": "HTML", "disable_web_page_preview": "true",
         "text": f"🤖 <b>{prefix}Autopilot · {esc(REPO.split('/')[-1])}</b>\n{text}"[:4000],
     }).encode()
-    try:
-        urllib.request.urlopen(f"https://api.telegram.org/bot{token}/sendMessage", body, timeout=20).read()
-    except urllib.error.HTTPError as e:  # never let a notification failure stop the loop
-        log(f"telegram failed: HTTP {e.code}")
-    except Exception as e:
-        log(f"telegram failed: {type(e).__name__}")
+    for attempt in range(3):
+        try:
+            urllib.request.urlopen(f"https://api.telegram.org/bot{token}/sendMessage", body, timeout=20).read()
+            return
+        except urllib.error.HTTPError as e:  # never let a notification failure stop the loop
+            log(f"telegram failed: HTTP {e.code}")
+            if e.code < 500 and e.code != 429:
+                return
+        except Exception as e:
+            log(f"telegram failed: {type(e).__name__} (try {attempt + 1}/3)")
+        time.sleep(3 * (attempt + 1))
 
 
 # --------------------------------------------------------------------------- github
@@ -393,6 +398,7 @@ class GateResult:
     ok: bool
     detail: str = ""
     blocking_text: str = ""
+    infra: bool = False  # the gate itself could not run: not the maker's problem
 
 
 def changed_files() -> list[str]:
@@ -422,21 +428,28 @@ def review_gate(task: Task, budget: Budget) -> GateResult:
         return GateResult("review", True, "disabled")
     instructions = prompt("reviewer", number=task.number, title=task.title, body=task.body)
     if shutil.which("codex") and (Path.home() / ".codex" / "auth.json").exists() and not ARGS.dry_run:
-        code, out = run(["codex", "review", "--base", BASE, "-"], stdin=instructions, timeout=1500)
-        if code == 0:
-            blocking = [f"[{sev}] {txt}" for sev, txt in P_FINDING.findall(out) if sev in cfg["block_on"]]
-            log(f"gate codex-review: {len(blocking)} blocking")
-            return GateResult("codex-review", not blocking, tail(out, 60),
-                              "Codex review findings to fix:\n" + "\n".join(blocking) if blocking else "")
-        log(f"codex review unavailable (exit {code}); falling back to {cfg['fallback']}")
+        # `codex review --base` cannot take custom instructions, so run a read-only exec
+        last = WORK / f"codex-review-{task.number}.md"
+        last.unlink(missing_ok=True)
+        code, out = run(["codex", "exec", "-s", "read-only", "-c", 'model_reasoning_effort="high"',
+                         "-o", str(last), "-"], stdin=instructions, timeout=1500)
+        text = last.read_text() if last.exists() else ""
+        verdict = last_json(text)
+        if code == 0 and verdict:
+            return verdict_gate("codex-review", verdict, text, cfg)
+        log(f"codex review unavailable (exit {code}, verdict={'yes' if verdict else 'no'}); falling back to {cfg['fallback']}")
     if cfg.get("fallback") != "claude":
         return GateResult("review", False, "no reviewer available", "No reviewer could run.")
     r = claude(instructions, budget=budget, max_turns=LIMITS["reviewer_max_turns"], tools=READ_ONLY_TOOLS, role="reviewer")
-    verdict = last_json(r["text"]) or {}
+    return verdict_gate("claude-review", last_json(r["text"]) or {}, r["text"], cfg)
+
+
+def verdict_gate(name: str, verdict: dict, raw: str, cfg: dict) -> GateResult:
     blocking = [f for f in verdict.get("findings", []) if f.get("severity") in cfg["block_on"]]
     ok = bool(verdict) and verdict.get("verdict") == "approve" and not blocking
     text = "\n".join(f"[{f.get('severity')}] {f.get('file')}:{f.get('line')} {f.get('summary')} → {f.get('fix')}" for f in blocking)
-    return GateResult("claude-review", ok, tail(r["text"], 60),
+    log(f"gate {name}: {verdict.get('verdict')} ({len(blocking)} blocking)")
+    return GateResult(name, ok, tail(raw, 60),
                       "" if ok else ("Reviewer findings to fix:\n" + text if text else "Reviewer did not approve or returned no verdict."))
 
 
@@ -482,7 +495,10 @@ def capture(src: Path, port: int, pages: list[str], out: Path) -> tuple[dict, st
         report = out / "report.json"
         if not report.exists():
             raise RuntimeError(f"ui_review produced no report: {tail(txt, 15)}")
-        return json.loads(report.read_text()).get("counts", {}), str(out / "report.md")
+        data = json.loads(report.read_text())
+        if not data.get("pages"):
+            raise RuntimeError(f"ui_review captured no pages (browser failed to start?) skipped={str(data.get('skipped'))[:300]} {tail(txt, 8)}")
+        return data.get("counts", {}), str(out / "report.md")
     finally:
         os.killpg(server.pid, signal.SIGTERM)
 
@@ -502,7 +518,7 @@ def visual_gate(task: Task, budget: Budget, baseline: dict) -> tuple[GateResult,
         shutil.rmtree(shots, ignore_errors=True)
         counts, report_md = capture(ROOT, cfg["port"], pages, shots)
     except Exception as e:
-        return GateResult("visual", False, str(e), f"Visual gate could not run: {e}"), []
+        return GateResult("visual", False, str(e), f"Visual gate could not run: {e}", infra=True), []
     worse = [f"{sev}: {counts.get(sev, 0)} (was {baseline['counts'].get(sev, 0)} on {BASE})"
              for sev in cfg["block_on_new"] if counts.get(sev, 0) > baseline["counts"].get(sev, 0)]
     if worse:
@@ -537,8 +553,11 @@ def touches_protected(files: list[str], task: Task) -> list[str]:
 
 
 def work_task(task: Task, budget: Budget, baseline: dict) -> dict:
+    usd_before = budget.run_usd
     try:
-        return _work_task(task, budget, baseline)
+        record = _work_task(task, budget, baseline)
+        record["est_usd"] = round(budget.run_usd - usd_before, 3)
+        return record
     except StopRun as e:
         issue_comment(task.number, f"⏸️ run หยุดกลางงานนี้ ({e.reason}) — คืนสถานะเป็น todo ให้ run ถัดไปเริ่มใหม่\n\n{run_url()}")
         set_status(task.number, "todo")
@@ -584,8 +603,11 @@ def _work_task(task: Task, budget: Budget, baseline: dict) -> dict:
                 results.append(g)
             gates_log.append({"attempt": attempt, "gates": {r.name: r.ok for r in results}})
             failed = [r for r in results if not r.ok]
+            infra = [r for r in failed if r.infra]
+            if infra:
+                return finish_blocked(task, record, f"gate {infra[0].name} รันไม่ได้ (ปัญหาที่ระบบ ไม่ใช่โค้ด)", gates_log, infra[0].detail)
             if not failed:
-                record["est_usd"] = round(budget.run_usd - usd_before, 3)
+                record["est_usd"] = round(budget.run_usd - usd_before, 3)  # shown in the evidence comment
                 return finish_passed(task, record, verdict, results, files, preexisting)
             feedback = "\n\n".join(r.blocking_text for r in failed)
             fp = fingerprint(feedback)
@@ -677,11 +699,27 @@ def merge_branch(branch: str, message: str) -> str:
     return sha
 
 
+def keep_work(task: Task, record: dict) -> str:
+    """Commit leftovers and push the branch so a human can pick the work up."""
+    if git("rev-parse", "--abbrev-ref", "HEAD") != task.branch:
+        return ""
+    if git("status", "--porcelain"):
+        git("add", "-A")
+        git("commit", "--quiet", "-m", f"autopilot(#{task.number}): unfinished work ({record['outcome']}){TRAILER}")
+    if not git("log", "--oneline", f"{BASE}..HEAD"):
+        return ""
+    if writes_allowed():
+        run(["git", "push", "--quiet", "--force-with-lease", "origin", task.branch])
+        return f"\n- Branch ที่ทำค้างไว้: https://github.com/{REPO}/tree/{task.branch}"
+    return f"\n- Branch (local): {task.branch}"
+
+
 def finish_blocked(task: Task, record: dict, reason: str, gates_log: list, feedback: str = "") -> dict:
     record["outcome"] = "blocked"
     record["reason"] = reason
+    branch_note = keep_work(task, record)
     body = (f"### ⛔ Autopilot หยุดงานนี้ ({now_bkk():%Y-%m-%d %H:%M} ICT)\n\nสาเหตุ: **{reason}**\n\n"
-            f"- Run: {run_url()}\n- Attempts: {record['attempts']}\n- Gates: `{json.dumps(gates_log, ensure_ascii=False)}`\n\n"
+            f"- Run: {run_url()}\n- Attempts: {record['attempts']}\n- Gates: `{json.dumps(gates_log, ensure_ascii=False)}`{branch_note}\n\n"
             f"<details><summary>ปัญหาล่าสุด</summary>\n\n```\n{feedback[-3000:]}\n```\n</details>\n\n"
             f"ถ้าจะให้ลองใหม่: แก้ issue (ขยาย acceptance criteria หรือแตกงานเล็กลง) แล้วเปลี่ยน label กลับเป็น `{LABELS['todo']}`")
     issue_comment(task.number, body)
@@ -693,7 +731,8 @@ def finish_blocked(task: Task, record: dict, reason: str, gates_log: list, feedb
 def finish_needs_human(task: Task, record: dict, reason: str) -> dict:
     record["outcome"] = "needs_human"
     record["reason"] = reason
-    issue_comment(task.number, f"### 🙋 ต้องการคนตัดสินใจ\n\n{reason}\n\nตอบใน issue นี้ แล้วเปลี่ยน label กลับเป็น `{LABELS['todo']}`")
+    branch_note = keep_work(task, record)
+    issue_comment(task.number, f"### 🙋 ต้องการคนตัดสินใจ\n\n{reason}\n{branch_note}\n\nตอบใน issue นี้ แล้วเปลี่ยน label กลับเป็น `{LABELS['todo']}`")
     set_status(task.number, "needs_human")
     telegram("needs_human", f"🙋 #{task.number} {esc(task.title)}\nต้องการคน: {esc(reason)}\n{task.url}")
     return record
@@ -860,7 +899,7 @@ def main() -> int:
         return 1
     finally:
         if start_branch:
-            run(["git", "checkout", "--quiet", start_branch])
+            run(["git", "checkout", "--quiet", "--force", start_branch])
     if not ARGS.dry_run:
         write_ledger(budget, stop_reason)
     if budget.run_tasks or CONFIG["notify"]["run_summary"] == "always":
