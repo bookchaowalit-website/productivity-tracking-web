@@ -1,0 +1,84 @@
+name: autopilot
+
+# Unattended AI delivery loop. See .autopilot/README.md.
+# Public repository → GitHub-hosted runner (CI hosting policy).
+# Scheduled runs only fire when the repository variable AUTOPILOT_ENABLED is "true".
+# Runs at 01:00 and 04:00 Asia/Bangkok so it does not share the Claude quota window
+# with daytime interactive work.
+
+on:
+  schedule:
+    - cron: "0 18 * * *"
+    - cron: "0 21 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "real | dry-run"
+        default: "dry-run"
+        type: choice
+        options: [dry-run, real]
+      max_tasks:
+        description: "Max tasks this run"
+        default: "1"
+
+concurrency:
+  group: autopilot
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  run:
+    if: github.event_name == 'workflow_dispatch' || vars.AUTOPILOT_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install agent CLIs
+        env:
+          CODEX_AUTH_JSON: ${{ secrets.CODEX_AUTH_JSON }}
+        run: |
+          npm install -g @anthropic-ai/claude-code@2.1.302 @openai/codex@0.162.1
+          if [ -n "$CODEX_AUTH_JSON" ]; then
+            mkdir -p ~/.codex && umask 077 && printf '%s' "$CODEX_AUTH_JSON" > ~/.codex/auth.json
+          fi
+
+      - name: Install Playwright for the visual gate
+        run: |
+          npm install --prefix "$RUNNER_TEMP/pw" playwright@1.63.0
+          "$RUNNER_TEMP/pw/node_modules/.bin/playwright" install --with-deps chromium
+          echo "PLAYWRIGHT_MODULE=$RUNNER_TEMP/pw/node_modules/playwright" >> "$GITHUB_ENV"
+
+      - name: Git identity
+        run: |
+          git config user.name "autopilot[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Run autopilot
+        run: |
+          args=()
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            [ "${{ inputs.mode }}" = "dry-run" ] && args+=(--dry-run)
+            args+=(--max-tasks "${{ inputs.max_tasks }}")
+          fi
+          python3 .autopilot/autopilot.py "${args[@]}"

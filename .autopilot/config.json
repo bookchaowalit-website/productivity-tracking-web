@@ -1,0 +1,92 @@
+{
+  "schema_version": "autopilot.v1",
+  "repo": "bookchaowalit-website/productivity-tracking-web",
+  "default_branch": "main",
+  "branch_prefix": "autopilot/",
+
+  "backlog": {
+    "source": "github-issues",
+    "label": "autopilot",
+    "status_labels": {
+      "todo": "autopilot:todo",
+      "in_progress": "autopilot:in-progress",
+      "blocked": "autopilot:blocked",
+      "needs_human": "autopilot:needs-human",
+      "proposed": "autopilot:proposed",
+      "approved": "autopilot:approved"
+    },
+    "priority_labels": ["P0", "P1", "P2", "P3"],
+    "risk_labels": { "low": "risk:low", "medium": "risk:medium", "high": "risk:high" },
+    "ledger_issue_title": "Autopilot ledger"
+  },
+
+  "limits": {
+    "max_tasks_per_run": 3,
+    "max_attempts_per_task": 3,
+    "max_run_minutes": 50,
+    "max_task_minutes": 25,
+    "maker_max_turns": 60,
+    "reviewer_max_turns": 25,
+    "visual_max_turns": 20,
+    "max_claude_calls_per_day": 24,
+    "max_tasks_per_day": 6,
+    "max_est_usd_per_task": 6,
+    "max_est_usd_per_day": 30,
+    "max_changed_lines_auto_merge": 400,
+    "consecutive_failures_to_pause": 3
+  },
+
+  "gates": {
+    "commands": [
+      { "name": "test", "run": "npm test" },
+      { "name": "lint", "run": "npm run lint" },
+      { "name": "build", "run": "npm run build" }
+    ],
+    "codex_review": { "enabled": true, "block_on": ["P0", "P1"], "fallback": "claude" },
+    "visual": {
+      "enabled": true,
+      "trigger_paths": ["src/app/", "src/components/", "tailwind.config.ts", "postcss.config.js"],
+      "port": 3100,
+      "pages": ["/"],
+      "widths": "375,768,1440",
+      "block_on_new": ["blocker", "major"],
+      "ai_visual_review": true,
+      "skills_repo": "bookchaowalit/platform-agent-skills",
+      "skills_ref": "7949eca0d58108d425a33e39abdc8b62dd2cd75f"
+    }
+  },
+
+  "merge": {
+    "mode": "local-merge",
+    "auto_merge_risk": ["low", "medium"],
+    "protected_paths": [
+      "prisma/",
+      "src/app/api/auth/",
+      "src/lib/auth",
+      "package.json",
+      "package-lock.json",
+      ".github/",
+      ".autopilot/",
+      "next.config.js",
+      "LICENSE",
+      ".env"
+    ]
+  },
+
+  "deploy": {
+    "auto": false,
+    "note": "Merging to main does not deploy (no Git→Vercel integration). Production deploys stay owner-approved; the run summary says when main is ahead of production."
+  },
+
+  "planner": {
+    "enabled": true,
+    "max_proposals": 5,
+    "auto_accept_risk": []
+  },
+
+  "notify": {
+    "telegram": true,
+    "events": ["task_done", "task_blocked", "needs_human", "pr_opened", "budget_hit", "paused", "rate_limited", "proposals", "run_error"],
+    "run_summary": "when_something_happened"
+  }
+}
