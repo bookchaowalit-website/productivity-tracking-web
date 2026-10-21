@@ -9,7 +9,7 @@ Metric definitions: [`docs/measurement/kpi-and-instrumentation-plan.md`](../../d
 | Field | Value |
 |---|---|
 | Spec ID / version | SPEC-001 / 0.3 |
-| Status | in review — waiting for owner approval (DoR) |
+| Status | **approved** (DoR, owner 2026-10-21) — implementation in progress |
 | Repository / path | bookchaowalit-website/productivity-tracking-web / `specs/001-product-analytics/spec.md` |
 | Owner (maker) | Claude Code |
 | Reviewer (checker) | Fresh read-only Claude reviewer session — [`reviews/R1.md`](./reviews/R1.md) |
@@ -17,7 +17,7 @@ Metric definitions: [`docs/measurement/kpi-and-instrumentation-plan.md`](../../d
 | Requirement links | KPI plan KPI-L-02, KPI-G-01; instrumentation checks 1–5; ADR-0005 D-1…D-8 |
 | Related docs | `PRODUCT.md`, `analytics/README.md`, `.autopilot/README.md` |
 | Main-only | no — branch, local merge, push (repository rule) |
-| Created / approved | 2026-10-21 / [pending] |
+| Created / approved | 2026-10-21 / 2026-10-21 |
 
 ## 1. Problem and intent
 
@@ -165,7 +165,7 @@ Metric definitions: [`docs/measurement/kpi-and-instrumentation-plan.md`](../../d
 |---|---|---|---|---|
 | Q-1 | PostHog free-plan limits and EU hosting confirmed at sign-up | ADR-0005 assumption | Owner | A-1 |
 | Q-2 | Privacy notice must describe server-side analytics before the first production event | PDPA transparency | Owner | A-3 |
-| Q-3 | The app already loads Vercel Web Analytics and Speed Insights. ADR-0005 layer 3 names Cloudflare Web Analytics or Umami; keep Vercel's here as the page layer, or remove it? | Consistency with D-7 | Owner | proposal: keep (cookieless, already deployed), record as a D-7 exception |
+| Q-3 | The app already loads Vercel Web Analytics and Speed Insights. ADR-0005 layer 3 names Cloudflare Web Analytics or Umami | Consistency with D-7 | Owner | **Decided 2026-10-21 by the owner: keep Vercel Web Analytics as TrackIt's page layer** (D-7 exception, recorded in ADR-0005) |
 | Q-4 | There is no user-delete path in `src`, and `ActivityLog` has no foreign key to `User` and stores `itemTitle` (free text). A data-subject request cannot be completed today | Data-subject deletion (PDPA) | Owner | **blocks G10** of the pilot: needs a deletion spec (SPEC-002) or a documented manual procedure before production events start |
 | Q-6 | When the main write commits and the `activityLog` insert then fails, the API returns 500 for a write that happened (existing behaviour) | KPI-G-01 accuracy | Owner | handled in AC-07: success event already sent, no failure event; the 500 itself is unchanged |
 | Q-5 | Merge does not deploy this repo; events start only after a manual Vercel deploy with the key set | Pilot timeline | Owner | A-4 |
@@ -183,5 +183,5 @@ Metric definitions: [`docs/measurement/kpi-and-instrumentation-plan.md`](../../d
 | Gate | Role | Name / date | Decision | Evidence |
 |---|---|---|---|---|
 | Spec ready (before code, DoR) | Reviewer (checker) | Fresh Claude reviewer / 2026-10-21 | R1 revise (3 P1) → fixed in 0.2; R2 **pass** with one P2 (§4 wording) fixed in 0.3 | [`reviews/R1.md`](./reviews/R1.md) |
-| Spec ready (before code, DoR) | Approver | Owner / [YYYY-MM-DD] | [approve / revise] | [message] |
+| Spec ready (before code, DoR) | Approver | Owner / 2026-10-21 | **approve** | "อนุมัติ SPEC-001 v0.3 (DoR) วันนี้ เริ่มเขียนโค้ดแบบ test-first ได้เลย และเรื่อง Q-3 ให้เก็บ Vercel Analytics ไว้เป็น page layer" |
 | Implemented (DoD) | Reviewer (checker) | [Name / YYYY-MM-DD] | [every scenario green; log complete] | [CI run URL] |
