@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { track } from '@/lib/analytics';
 import { ContentCategory, TrackingStatus, RatingScale, Prisma } from '@prisma/client';
 
 // Run on Node.js runtime so Prisma Client is supported
@@ -25,6 +26,27 @@ function findOwnedTracking(userId: string, itemId: string) {
         where: { userId_itemId: { userId, itemId } },
         include: { item: true }
     });
+}
+
+// Fields whose stored change counts as an update (SPEC-001 AC-06).
+const UPDATABLE_FIELDS = ['status', 'progress', 'rating', 'isFavorite', 'priority', 'startDate', 'finishDate'] as const;
+
+function sameValue(a: unknown, b: unknown) {
+    if (a instanceof Date || b instanceof Date) {
+        return a instanceof Date && b instanceof Date && a.getTime() === b.getTime();
+    }
+    return (a ?? null) === (b ?? null);
+}
+
+function changedFields(before: Record<string, unknown>, after: Record<string, unknown>) {
+    return UPDATABLE_FIELDS.filter((field) => !sameValue(before[field], after[field]));
+}
+
+// A failure is reported only for a known user and only when the main write did
+// not commit, so a committed write is never counted as failed (AC-07).
+async function trackFailure(userId: unknown, committed: boolean, method: string, status: number) {
+    if (committed || typeof userId !== 'string' || !userId) return;
+    await track('tracking_write_failed', userId, { method, status_code: status });
 }
 
 function notOwned() {
@@ -95,6 +117,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     if (!checkSecret(request)) return unauthorized();
 
+    let actor: unknown;
+    let committed = false;
     try {
         const body = await request.json();
         const {
@@ -120,10 +144,12 @@ export async function POST(request: NextRequest) {
         if (!userId || !title || !category) {
             return NextResponse.json({ error: 'User ID, title, and category are required' }, { status: 400 });
         }
+        actor = userId;
 
         // Ensure user exists
         const user = await prisma.user.findUnique({ where: { id: userId } });
         if (!user) {
+            await trackFailure(actor, committed, 'POST', 404);
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
@@ -145,6 +171,12 @@ export async function POST(request: NextRequest) {
                     isFavorite: isFavorite || false,
                 },
                 include: { item: true }
+            });
+            committed = true;
+            await track('tracking_item_added', userId, {
+                category: existingItem.category,
+                source: 'existing_item',
+                status: trackingItem.status,
             });
 
             await prisma.activityLog.create({
@@ -182,6 +214,12 @@ export async function POST(request: NextRequest) {
                 },
                 include: { userTrackings: { where: { userId } } }
             });
+            committed = true;
+            await track('tracking_item_added', userId, {
+                category: newItem.category,
+                source: 'new_item',
+                status: newItem.userTrackings[0]?.status,
+            });
 
             await prisma.activityLog.create({
                 data: {
@@ -198,9 +236,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(trackingItem, { status: 201 });
     } catch (error) {
         if (isUniqueViolation(error)) {
+            await trackFailure(actor, committed, 'POST', 409);
             return NextResponse.json({ error: 'This item is already on your list' }, { status: 409 });
         }
         console.error('Error creating tracking item:', error);
+        await trackFailure(actor, committed, 'POST', 500);
         return NextResponse.json({ error: 'Failed to create tracking item' }, { status: 500 });
     }
 }
@@ -208,6 +248,8 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
     if (!checkSecret(request)) return unauthorized();
 
+    let actor: unknown;
+    let committed = false;
     try {
         const body = await request.json();
         const { userId, itemId, status, rating, progress, startDate, finishDate, priority, isFavorite } = body;
@@ -215,9 +257,13 @@ export async function PUT(request: NextRequest) {
         if (!userId || !itemId) {
             return NextResponse.json({ error: 'User ID and item ID are required' }, { status: 400 });
         }
+        actor = userId;
 
         const currentTracking = await findOwnedTracking(userId, itemId);
-        if (!currentTracking) return notOwned();
+        if (!currentTracking) {
+            await trackFailure(actor, committed, 'PUT', 404);
+            return notOwned();
+        }
 
         // Keyed by (userId, itemId) again, so the write itself can only ever
         // touch the caller's own row.
@@ -235,6 +281,14 @@ export async function PUT(request: NextRequest) {
             },
             include: { item: true }
         });
+        committed = true;
+        const fieldsChanged = changedFields(currentTracking, updatedTracking);
+        if (fieldsChanged.length > 0) {
+            await track('tracking_updated', userId, { fields_changed: fieldsChanged, status: updatedTracking.status });
+        }
+        if (updatedTracking.status === TrackingStatus.COMPLETED && currentTracking.status !== TrackingStatus.COMPLETED) {
+            await track('tracking_item_completed', userId, { category: currentTracking.item.category });
+        }
 
         if (status === TrackingStatus.COMPLETED && currentTracking.status !== TrackingStatus.COMPLETED) {
             await prisma.activityLog.create({
@@ -261,6 +315,7 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json(updatedTracking);
     } catch (error) {
         console.error('Error updating tracking item:', error);
+        await trackFailure(actor, committed, 'PUT', 500);
         return NextResponse.json({ error: 'Failed to update tracking item' }, { status: 500 });
     }
 }
@@ -268,6 +323,8 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
     if (!checkSecret(request)) return unauthorized();
 
+    let actor: unknown;
+    let committed = false;
     try {
         const searchParams = request.nextUrl.searchParams;
         const userId = searchParams.get('userId');
@@ -277,10 +334,17 @@ export async function DELETE(request: NextRequest) {
             return NextResponse.json({ error: 'User ID and item ID are required' }, { status: 400 });
         }
 
+        actor = userId;
+
         const tracking = await findOwnedTracking(userId, itemId);
-        if (!tracking) return notOwned();
+        if (!tracking) {
+            await trackFailure(actor, committed, 'DELETE', 404);
+            return notOwned();
+        }
 
         await prisma.userTracking.delete({ where: { userId_itemId: { userId, itemId } } });
+        committed = true;
+        await track('tracking_item_removed', userId, { category: tracking.item.category });
 
         await prisma.activityLog.create({
             data: {
@@ -294,6 +358,7 @@ export async function DELETE(request: NextRequest) {
         return NextResponse.json({ message: 'Tracking item removed successfully' });
     } catch (error) {
         console.error('Error deleting tracking item:', error);
+        await trackFailure(actor, committed, 'DELETE', 500);
         return NextResponse.json({ error: 'Failed to delete tracking item' }, { status: 500 });
     }
 }

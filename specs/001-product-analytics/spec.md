@@ -9,7 +9,7 @@ Metric definitions: [`docs/measurement/kpi-and-instrumentation-plan.md`](../../d
 | Field | Value |
 |---|---|
 | Spec ID / version | SPEC-001 / 0.3 |
-| Status | **approved** (DoR, owner 2026-10-21) — implementation in progress |
+| Status | **implemented** (DoR approved by the owner 2026-10-21; DoD review pending) |
 | Repository / path | bookchaowalit-website/productivity-tracking-web / `specs/001-product-analytics/spec.md` |
 | Owner (maker) | Claude Code |
 | Reviewer (checker) | Fresh read-only Claude reviewer session — [`reviews/R1.md`](./reviews/R1.md) |
@@ -157,7 +157,15 @@ Metric definitions: [`docs/measurement/kpi-and-instrumentation-plan.md`](../../d
 
 | Scenario | Test | Red: commit / run + failure message | Green: commit / run | Refactor note |
 |---|---|---|---|---|
-| AC-01 … AC-09 | see section 3 | [after approval] | [after approval] | |
+| AC-01 | `analytics.test.cjs` "no key: no request" | 2c561e6 · `node --test tests/analytics.test.cjs tests/tracking-analytics.test.cjs` · `ENOENT: src/lib/analytics.ts` (module missing) | GREEN_SHA · `npm test` 94/94 | none |
+| AC-02 | "sends allow-listed event", "POSTHOG_HOST overrides…", "caller cannot override…" | 2c561e6 · `node --test tests/analytics.test.cjs tests/tracking-analytics.test.cjs` · `ENOENT` (module missing) | GREEN_SHA · `npm test` 94/94 | none |
+| AC-03 | "drops unknown properties and events" | 2c561e6 · `node --test tests/analytics.test.cjs tests/tracking-analytics.test.cjs` · `ENOENT` (module missing) | GREEN_SHA · `npm test` 94/94 | none |
+| AC-04 | "failure is swallowed" ×3; `tracking-analytics` "write succeeds when analytics fails" | 2c561e6 · `node --test tests/analytics.test.cjs tests/tracking-analytics.test.cjs` · `ENOENT` (module missing) | GREEN_SHA · `npm test` 94/94 | none |
+| AC-05 | "add emits tracking_item_added" | 2c561e6 · `node --test tests/analytics.test.cjs tests/tracking-analytics.test.cjs` · `deepEqual`: expected 2 events, got `[]` | GREEN_SHA · `npm test` 94/94 | none |
+| AC-06 | "update emits tracking_updated and completed"; "update with no stored change sends nothing" | 2c561e6 · `node --test tests/analytics.test.cjs tests/tracking-analytics.test.cjs` · first: got `[]`; second passed before the code (negative case — expected, it asserts no event) | GREEN_SHA · `npm test` 94/94 | none |
+| AC-07 | "failed writes emit…"; "log failure after commit…"; "failures without a userId or secret send nothing" | 2c561e6 · `node --test tests/analytics.test.cjs tests/tracking-analytics.test.cjs` · first two: got `[]` / missing success event; third passed before the code (negative case) | GREEN_SHA · `npm test` 94/94 | none |
+| AC-08 | "delete emits tracking_item_removed" | 2c561e6 · `node --test tests/analytics.test.cjs tests/tracking-analytics.test.cjs` · got `[]` | GREEN_SHA · `npm test` 94/94 | none |
+| AC-09 | "refused write leaks nothing" | 2c561e6 · `node --test tests/analytics.test.cjs tests/tracking-analytics.test.cjs` · got `[]` | GREEN_SHA · `npm test` 94/94 | none |
 
 ## 7. Risks and open questions
 

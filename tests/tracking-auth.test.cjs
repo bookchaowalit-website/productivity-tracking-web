@@ -30,6 +30,8 @@ const { route: publicRoute } = loadRoute('src/app/api/tracking/route.ts', {
 const { route: internalRoute } = loadRoute('src/app/api/internal/tracking/route.ts', {
   '@/lib/prisma': { __esModule: true, default: prismaFixture },
   '@prisma/client': { ContentCategory: {}, TrackingStatus: {}, RatingScale: {}, Prisma: {} },
+  // Analytics is covered by tracking-analytics.test.cjs; a no-op here.
+  '@/lib/analytics': { track: async () => {} },
 });
 
 const ENV_KEYS = ['INTERNAL_API_SECRET', 'INTERNAL_API_ORIGIN', 'NEXTAUTH_URL', 'VERCEL_URL'];

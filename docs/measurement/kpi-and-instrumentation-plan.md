@@ -68,12 +68,12 @@ after the database write has finished (SPEC-001). No browser SDK in this pilot.
 
 | Event / field | Trigger (exact user or system action) | Properties | Personal data (incl. IDs / IP)? | Emitted by | Requirement / story | Status |
 |---|---|---|---|---|---|---|
-| `tracking_item_added` | POST creates a `UserTracking` row | `category`, `source` (`existing_item` / `new_item`), stored `status` | `distinct_id` = `User.id` (pseudonymous); IP not sent | backend | SPEC-001 AC-05 | planned |
-| `tracking_updated` | PUT changes at least one stored value of a `UserTracking` row | `fields_changed` (diff against the stored row: `status`, `progress`, `rating`, `isFavorite`, `priority`, dates), `status` | `User.id` | backend | AC-06 | planned |
-| `tracking_item_completed` | PUT moves status to `COMPLETED` | `category` | `User.id` | backend | AC-06 | planned |
-| `tracking_item_removed` | DELETE removes a `UserTracking` row | `category` | `User.id` | backend | AC-08 | planned |
-| `tracking_write_failed` | POST 404/409, PUT/DELETE 404, or 500 before the main write committed, with a parsed `userId` (SPEC-001 AC-07). Requests refused by the public route (401/403/413/415/validation) never reach this point | `method`, `status_code` | `User.id` | backend | AC-07 | planned |
-| every event | — | `product = "trackit"`, `$ip = null`, `$geoip_disable = true` | — | wrapper | AC-02 | planned |
+| `tracking_item_added` | POST creates a `UserTracking` row | `category`, `source` (`existing_item` / `new_item`), stored `status` | `distinct_id` = `User.id` (pseudonymous); IP not sent | backend | SPEC-001 AC-05 | implemented (tests) |
+| `tracking_updated` | PUT changes at least one stored value of a `UserTracking` row | `fields_changed` (diff against the stored row: `status`, `progress`, `rating`, `isFavorite`, `priority`, dates), `status` | `User.id` | backend | AC-06 | implemented (tests) |
+| `tracking_item_completed` | PUT moves status to `COMPLETED` | `category` | `User.id` | backend | AC-06 | implemented (tests) |
+| `tracking_item_removed` | DELETE removes a `UserTracking` row | `category` | `User.id` | backend | AC-08 | implemented (tests) |
+| `tracking_write_failed` | POST 404/409, PUT/DELETE 404, or 500 before the main write committed, with a parsed `userId` (SPEC-001 AC-07). Requests refused by the public route (401/403/413/415/validation) never reach this point | `method`, `status_code` | `User.id` | backend | AC-07 | implemented (tests) |
+| every event | — | `product = "trackit"`, `$ip = null`, `$geoip_disable = true` | — | wrapper | AC-02 | implemented (tests) |
 
 Never sent: titles, descriptions, notes, URLs, email, name, image, request
 bodies, error messages. The wrapper drops any property not on the allow-list
