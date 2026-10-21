@@ -283,12 +283,14 @@ export async function PUT(request: NextRequest) {
         });
         committed = true;
         const fieldsChanged = changedFields(currentTracking, updatedTracking);
-        if (fieldsChanged.length > 0) {
-            await track('tracking_updated', userId, { fields_changed: fieldsChanged, status: updatedTracking.status });
-        }
-        if (updatedTracking.status === TrackingStatus.COMPLETED && currentTracking.status !== TrackingStatus.COMPLETED) {
-            await track('tracking_item_completed', userId, { category: currentTracking.item.category });
-        }
+        const completedNow = updatedTracking.status === TrackingStatus.COMPLETED
+            && currentTracking.status !== TrackingStatus.COMPLETED;
+        // Sent together so a completing update waits for one timeout at most.
+        await Promise.all([
+            fieldsChanged.length > 0
+                && track('tracking_updated', userId, { fields_changed: fieldsChanged, status: updatedTracking.status }),
+            completedNow && track('tracking_item_completed', userId, { category: currentTracking.item.category }),
+        ]);
 
         if (status === TrackingStatus.COMPLETED && currentTracking.status !== TrackingStatus.COMPLETED) {
             await prisma.activityLog.create({

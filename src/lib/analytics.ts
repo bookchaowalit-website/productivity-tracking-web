@@ -47,14 +47,21 @@ export async function track(event: string, userId: string, props: Record<string,
             reject(new Error('timeout'));
         }, timeoutMs());
     });
+    // Errors carry a fixed reason only: a fetch error message can contain the
+    // host URL, and with it any credentials a misconfigured host includes.
     const send = fetch(`${host}/i/v0/e/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body,
         signal: controller.signal,
-    }).then((response) => {
-        if (!response.ok) throw new Error(`status ${response.status}`);
-    });
+    }).then(
+        (response) => {
+            if (!response.ok) throw new Error(`status ${response.status}`);
+        },
+        () => {
+            throw new Error('request failed');
+        },
+    );
     // Whichever loses the race must not surface as an unhandled rejection.
     send.catch(() => {});
     timedOut.catch(() => {});
@@ -62,7 +69,7 @@ export async function track(event: string, userId: string, props: Record<string,
     try {
         await Promise.race([send, timedOut]);
     } catch (error) {
-        // Event name and reason only: never the payload, key or user ID.
+        // Event name and a fixed reason only: never the payload, key or user ID.
         console.warn(`analytics: ${event} not sent (${error instanceof Error ? error.message : 'unknown error'})`);
     } finally {
         clearTimeout(timer);
