@@ -17,6 +17,8 @@ const prismaStub = new Proxy({}, {
 const stubs = {
   '@/lib/prisma': { __esModule: true, default: prismaStub },
   '@prisma/client': { ContentCategory: {}, TrackingStatus: {}, RatingScale: {}, Prisma: {} },
+  // Analytics is covered by tracking-analytics.test.cjs; a no-op here.
+  '@/lib/analytics': { track: async () => {} },
 };
 const routePath = path.resolve(__dirname, '../src/app/api/internal/tracking/route.ts');
 const compiled = ts.transpileModule(fs.readFileSync(routePath, 'utf8'), {

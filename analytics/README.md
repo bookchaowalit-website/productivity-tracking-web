@@ -8,7 +8,7 @@ files here implement them.
 |---|---|---|
 | 1 — system of record | KPIs computed by SQL from this app's database | `kpi/<KPI-ID>-*.sql` |
 | 2 — product analytics | Server-side events to PostHog Cloud EU | `src/lib/analytics.ts` (planned, [SPEC-001](../specs/001-product-analytics/spec.md)) |
-| 3 — page analytics | Existing Vercel Web Analytics + Speed Insights (cookieless) | `src/app/layout.tsx` — see open question Q-3 in SPEC-001 |
+| 3 — page analytics | Existing Vercel Web Analytics + Speed Insights (cookieless) | `src/app/layout.tsx` — kept as TrackIt's page layer (owner, 2026-10-21; ADR-0005 D-7 exception) |
 
 ## Running a layer-1 query
 

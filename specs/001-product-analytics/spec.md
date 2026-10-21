@@ -9,7 +9,7 @@ Metric definitions: [`docs/measurement/kpi-and-instrumentation-plan.md`](../../d
 | Field | Value |
 |---|---|
 | Spec ID / version | SPEC-001 / 0.3 |
-| Status | in review — waiting for owner approval (DoR) |
+| Status | **implemented** (DoR approved by the owner 2026-10-21; DoD reviewer pass 2026-10-21) |
 | Repository / path | bookchaowalit-website/productivity-tracking-web / `specs/001-product-analytics/spec.md` |
 | Owner (maker) | Claude Code |
 | Reviewer (checker) | Fresh read-only Claude reviewer session — [`reviews/R1.md`](./reviews/R1.md) |
@@ -17,7 +17,7 @@ Metric definitions: [`docs/measurement/kpi-and-instrumentation-plan.md`](../../d
 | Requirement links | KPI plan KPI-L-02, KPI-G-01; instrumentation checks 1–5; ADR-0005 D-1…D-8 |
 | Related docs | `PRODUCT.md`, `analytics/README.md`, `.autopilot/README.md` |
 | Main-only | no — branch, local merge, push (repository rule) |
-| Created / approved | 2026-10-21 / [pending] |
+| Created / approved | 2026-10-21 / 2026-10-21 |
 
 ## 1. Problem and intent
 
@@ -157,7 +157,18 @@ Metric definitions: [`docs/measurement/kpi-and-instrumentation-plan.md`](../../d
 
 | Scenario | Test | Red: commit / run + failure message | Green: commit / run | Refactor note |
 |---|---|---|---|---|
-| AC-01 … AC-09 | see section 3 | [after approval] | [after approval] | |
+| AC-01 | `analytics.test.cjs` "no key: no request" | 2c561e6 · `node --test tests/analytics.test.cjs tests/tracking-analytics.test.cjs` · `ENOENT: src/lib/analytics.ts` (module missing) | 84aa79b · `npm test` 94/94 | none |
+| AC-02 | "sends allow-listed event", "POSTHOG_HOST overrides…", "caller cannot override…" | 2c561e6 · `node --test tests/analytics.test.cjs tests/tracking-analytics.test.cjs` · `ENOENT` (module missing) | 84aa79b · `npm test` 94/94 | none |
+| AC-03 | "drops unknown properties and events" | 2c561e6 · `node --test tests/analytics.test.cjs tests/tracking-analytics.test.cjs` · `ENOENT` (module missing) | 84aa79b · `npm test` 94/94 | none |
+| AC-04 | "failure is swallowed" ×3; `tracking-analytics` "write succeeds when analytics fails" | 2c561e6 · `node --test tests/analytics.test.cjs tests/tracking-analytics.test.cjs` · `ENOENT` (module missing) | 84aa79b · `npm test` 94/94 | none |
+| AC-05 | "add emits tracking_item_added" | 2c561e6 · `node --test tests/analytics.test.cjs tests/tracking-analytics.test.cjs` · `deepEqual`: expected 2 events, got `[]` | 84aa79b · `npm test` 94/94 | none |
+| AC-06 | "update emits tracking_updated and completed"; "update with no stored change sends nothing" | 2c561e6 · `node --test tests/analytics.test.cjs tests/tracking-analytics.test.cjs` · first: got `[]`; second passed before the code (negative case — expected, it asserts no event) | 84aa79b · `npm test` 94/94 | none |
+| AC-07 | "failed writes emit…"; "log failure after commit…"; "failures without a userId or secret send nothing" | 2c561e6 · `node --test tests/analytics.test.cjs tests/tracking-analytics.test.cjs` · first two: got `[]` / missing success event; third passed before the code (negative case) | 84aa79b · `npm test` 94/94 | none |
+| AC-08 | "delete emits tracking_item_removed" | 2c561e6 · `node --test tests/analytics.test.cjs tests/tracking-analytics.test.cjs` · got `[]` | 84aa79b · `npm test` 94/94 | none |
+| AC-09 | "refused write leaks nothing" | 2c561e6 · `node --test tests/analytics.test.cjs tests/tracking-analytics.test.cjs` · got `[]` | 84aa79b · `npm test` 94/94 | none |
+| AC-04 (DoD P2) | "a completing PUT waits for one timeout, not two" | 92650c2 · `node --test tests/tracking-analytics.test.cjs` · `deepEqual` actual `['tracking_updated']`, expected both events in flight | bc303a4 · `npm test` 98/98 (full suite) | events sent with `Promise.all` |
+| AC-04 (DoD P3) | "analytics failure logs one warning without the reason text" | 92650c2 · same command · warning contained `user:pass@ingest.test` | bc303a4 · `npm test` 98/98 | fixed reason `request failed` |
+| AC-06 / AC-07 (DoD P3) | "date changes are listed…"; "pre-commit 500 on POST and DELETE…" | 92650c2 · passed before the fix: added coverage for behaviour already implemented in 84aa79b | bc303a4 · `npm test` 98/98 | none |
 
 ## 7. Risks and open questions
 
@@ -165,7 +176,7 @@ Metric definitions: [`docs/measurement/kpi-and-instrumentation-plan.md`](../../d
 |---|---|---|---|---|
 | Q-1 | PostHog free-plan limits and EU hosting confirmed at sign-up | ADR-0005 assumption | Owner | A-1 |
 | Q-2 | Privacy notice must describe server-side analytics before the first production event | PDPA transparency | Owner | A-3 |
-| Q-3 | The app already loads Vercel Web Analytics and Speed Insights. ADR-0005 layer 3 names Cloudflare Web Analytics or Umami; keep Vercel's here as the page layer, or remove it? | Consistency with D-7 | Owner | proposal: keep (cookieless, already deployed), record as a D-7 exception |
+| Q-3 | The app already loads Vercel Web Analytics and Speed Insights. ADR-0005 layer 3 names Cloudflare Web Analytics or Umami | Consistency with D-7 | Owner | **Decided 2026-10-21 by the owner: keep Vercel Web Analytics as TrackIt's page layer** (D-7 exception, recorded in ADR-0005) |
 | Q-4 | There is no user-delete path in `src`, and `ActivityLog` has no foreign key to `User` and stores `itemTitle` (free text). A data-subject request cannot be completed today | Data-subject deletion (PDPA) | Owner | **blocks G10** of the pilot: needs a deletion spec (SPEC-002) or a documented manual procedure before production events start |
 | Q-6 | When the main write commits and the `activityLog` insert then fails, the API returns 500 for a write that happened (existing behaviour) | KPI-G-01 accuracy | Owner | handled in AC-07: success event already sent, no failure event; the 500 itself is unchanged |
 | Q-5 | Merge does not deploy this repo; events start only after a manual Vercel deploy with the key set | Pilot timeline | Owner | A-4 |
@@ -177,11 +188,12 @@ Metric definitions: [`docs/measurement/kpi-and-instrumentation-plan.md`](../../d
 | 0.1 | 2026-10-21 | First draft | all | — |
 | 0.2 | 2026-10-21 | R1: AC-07 reachable failures and committed-write rule; harness plan; injectable timeout; top-level `timestamp`; stored `status`; `fields_changed` as a real diff; Q-4 blocks G10; Q-6 | AC-02, 04, 05, 06, 07 | — |
 | 0.3 | 2026-10-21 | R2: §4 event timing matches the committed-write rule; NFR wording; named test for log failure after commit | AC-07 | — |
+| 0.4 | 2026-10-21 | Implemented; DoD review fixes (parallel completion events, fixed warning reason, extra tests) | AC-04, AC-06, AC-07 | — |
 
 ## Approval
 
 | Gate | Role | Name / date | Decision | Evidence |
 |---|---|---|---|---|
 | Spec ready (before code, DoR) | Reviewer (checker) | Fresh Claude reviewer / 2026-10-21 | R1 revise (3 P1) → fixed in 0.2; R2 **pass** with one P2 (§4 wording) fixed in 0.3 | [`reviews/R1.md`](./reviews/R1.md) |
-| Spec ready (before code, DoR) | Approver | Owner / [YYYY-MM-DD] | [approve / revise] | [message] |
-| Implemented (DoD) | Reviewer (checker) | [Name / YYYY-MM-DD] | [every scenario green; log complete] | [CI run URL] |
+| Spec ready (before code, DoR) | Approver | Owner / 2026-10-21 | **approve** | "อนุมัติ SPEC-001 v0.3 (DoR) วันนี้ เริ่มเขียนโค้ดแบบ test-first ได้เลย และเรื่อง Q-3 ให้เก็บ Vercel Analytics ไว้เป็น page layer" |
+| Implemented (DoD) | Reviewer (checker) | Fresh Claude reviewer / 2026-10-21 | **pass** (red reproduced at 2c561e6; 0 P1, 1 P2 + 3 P3 fixed in bc303a4) | CI run URL: see change log 0.4 |

@@ -86,6 +86,8 @@ const { route: publicRoute } = loadRoute('src/app/api/tracking/route.ts', {
 const { route: internalRoute } = loadRoute('src/app/api/internal/tracking/route.ts', {
   '@/lib/prisma': { __esModule: true, default: prismaFixture },
   '@prisma/client': prismaClientStub,
+  // Analytics is covered by tracking-analytics.test.cjs; a no-op here.
+  '@/lib/analytics': { track: async () => {} },
 });
 
 const APP_ORIGIN = 'https://tracking.example.test';
