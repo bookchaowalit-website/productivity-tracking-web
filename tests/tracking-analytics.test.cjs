@@ -231,3 +231,72 @@ test('write succeeds when analytics fails (AC-04)', async () => {
     else process.env.POSTHOG_PROJECT_KEY = originalKey;
   }
 });
+
+const flush = () => new Promise((resolve) => setImmediate(resolve));
+const withRealAnalytics = async (fetchImpl, run) => {
+  const { route: realAnalytics } = loadRoute('src/lib/analytics.ts');
+  const route = loadInternal(realAnalytics);
+  const originalFetch = global.fetch;
+  const saved = { key: process.env.POSTHOG_PROJECT_KEY, timeout: process.env.POSTHOG_TIMEOUT_MS };
+  process.env.POSTHOG_PROJECT_KEY = 'phc_test_only';
+  process.env.POSTHOG_TIMEOUT_MS = '50';
+  global.fetch = fetchImpl;
+  const warnings = [];
+  mock.method(console, 'warn', (...args) => { warnings.push(args); });
+  try {
+    await run(route, warnings);
+  } finally {
+    global.fetch = originalFetch;
+    mock.timers.reset();
+    for (const [name, value] of [['POSTHOG_PROJECT_KEY', saved.key], ['POSTHOG_TIMEOUT_MS', saved.timeout]]) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+};
+
+test('a completing PUT waits for one timeout, not two (AC-04, NFR)', async () => {
+  const sent = [];
+  await withRealAnalytics((url, init) => { sent.push(JSON.parse(init.body).event); return new Promise(() => {}); }, async (route, warnings) => {
+    mock.timers.enable({ apis: ['setTimeout'] });
+    const pending = call(route, 'PUT', { body: { userId: 'user-a', itemId: 'item-a', status: 'COMPLETED' } });
+    for (let i = 0; i < 20; i += 1) await flush();
+    // Both events must already be in flight before the first timeout fires.
+    assert.deepEqual(sent.sort(), ['tracking_item_completed', 'tracking_updated']);
+    mock.timers.tick(50);
+    const response = await pending;
+    assert.equal(response.status, 200);
+    assert.equal(warnings.length, 2);
+  });
+});
+
+test('pre-commit 500 on POST and DELETE emits tracking_write_failed (AC-07)', async () => {
+  for (const [method, options, failing] of [
+    ['POST', { body: { userId: 'user-a', title: 'b private', category: 'BOOK' } }, 'userTracking.create'],
+    ['POST', { body: { userId: 'user-a', title: 'Dune', category: 'BOOK' } }, 'trackingItem.create'],
+    ['DELETE', { query: '?userId=user-a&itemId=item-a' }, 'userTracking.delete'],
+  ]) {
+    events = [];
+    failNext[failing] = true;
+    const response = await call(internal, method, options);
+    assert.equal(response.status, 500, failing);
+    assert.deepEqual(events, [{ event: 'tracking_write_failed', userId: 'user-a', props: { method, status_code: 500 } }]);
+  }
+});
+
+test('date changes are listed in fields_changed (AC-06)', async () => {
+  await call(internal, 'PUT', { body: { userId: 'user-a', itemId: 'item-a', startDate: '2026-10-01T00:00:00.000Z' } });
+  assert.deepEqual(events.at(-1).props.fields_changed, ['startDate']);
+  events = [];
+  await call(internal, 'PUT', { body: { userId: 'user-a', itemId: 'item-a', startDate: '2026-10-01T00:00:00.000Z' } });
+  assert.deepEqual(events, []);
+});
+
+test('analytics failure logs one warning without the reason text (AC-04)', async () => {
+  await withRealAnalytics(async () => { throw new Error('connect https://user:pass@ingest.test failed'); }, async (route, warnings) => {
+    const response = await call(route, 'DELETE', { query: '?userId=user-a&itemId=item-a' });
+    assert.equal(response.status, 200);
+    assert.equal(warnings.length, 1);
+    assert.doesNotMatch(JSON.stringify(warnings), /user:pass|ingest\.test|phc_test_only|user-a/);
+  });
+});
