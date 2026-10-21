@@ -423,23 +423,10 @@ def command_gates() -> list[GateResult]:
 
 
 def review_gate(task: Task, budget: Budget) -> GateResult:
-    cfg = CONFIG["gates"]["codex_review"]
+    cfg = CONFIG["gates"]["review"]
     if not cfg["enabled"]:
         return GateResult("review", True, "disabled")
     instructions = prompt("reviewer", number=task.number, title=task.title, body=task.body)
-    if shutil.which("codex") and (Path.home() / ".codex" / "auth.json").exists() and not ARGS.dry_run:
-        # `codex review --base` cannot take custom instructions, so run a read-only exec
-        last = WORK / f"codex-review-{task.number}.md"
-        last.unlink(missing_ok=True)
-        code, out = run(["codex", "exec", "-s", "read-only", "-c", 'model_reasoning_effort="high"',
-                         "-o", str(last), "-"], stdin=instructions, timeout=1500)
-        text = last.read_text() if last.exists() else ""
-        verdict = last_json(text)
-        if code == 0 and verdict:
-            return verdict_gate("codex-review", verdict, text, cfg)
-        log(f"codex review unavailable (exit {code}, verdict={'yes' if verdict else 'no'}); falling back to {cfg['fallback']}")
-    if cfg.get("fallback") != "claude":
-        return GateResult("review", False, "no reviewer available", "No reviewer could run.")
     r = claude(instructions, budget=budget, max_turns=LIMITS["reviewer_max_turns"], tools=READ_ONLY_TOOLS, role="reviewer")
     return verdict_gate("claude-review", last_json(r["text"]) or {}, r["text"], cfg)
 

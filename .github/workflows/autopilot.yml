@@ -54,14 +54,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install agent CLIs
-        env:
-          CODEX_AUTH_JSON: ${{ secrets.CODEX_AUTH_JSON }}
-        run: |
-          npm install -g @anthropic-ai/claude-code@2.1.302 @openai/codex@0.162.1
-          if [ -n "$CODEX_AUTH_JSON" ]; then
-            mkdir -p ~/.codex && umask 077 && printf '%s' "$CODEX_AUTH_JSON" > ~/.codex/auth.json
-          fi
+      - name: Install agent CLI
+        run: npm install -g @anthropic-ai/claude-code@2.1.302
 
       - name: Install Playwright for the visual gate
         run: |

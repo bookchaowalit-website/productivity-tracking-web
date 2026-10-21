@@ -3,7 +3,7 @@ title: "Autopilot loop — pilot (productivity-tracking-web)"
 status: pilot
 created: 2026-10-18
 updated: 2026-10-18
-owner: bookchaowalit (approver) · Claude autopilot (maker) · Codex / Claude reviewer (checker)
+owner: bookchaowalit (approver) · Claude autopilot (maker) · Claude reviewer session แยก (checker)
 ---
 
 # Autopilot loop (pilot)
@@ -21,7 +21,6 @@ pilot นี้ใช้กับ `bookchaowalit-website/productivity-tracking-w
 | ความเสี่ยงต่อคนอื่น | showcase tier B ไม่มีผู้ใช้จริงหรือรายได้ (`TRUTH-PASS.md`) | งานลูกค้า ห้ามมี CI/CD และ deploy ต้องอนุมัติ |
 | merge = deploy? | **ไม่ใช่** (ไม่มี Git→Vercel) merge แล้ว production ยังไม่เปลี่ยน | – |
 | visibility | public → ใช้ GitHub-hosted runner ได้ตาม CI policy | private |
-| ส่ง diff ให้ Codex/OpenAI | ไม่มีข้อมูลลูกค้า | โค้ดลูกค้า |
 | เครื่องมือตรวจ | มี `npm test` (4 suites), lint, build | มีครบ แต่ใหญ่กว่า (130 commits) |
 | ขนาด | เล็ก (26 commits) วัดผลง่าย | ใหญ่ |
 
@@ -37,7 +36,7 @@ cron 01:00 / 04:00 ICT (GitHub Actions, ubuntu-latest)
        หยิบ issue autopilot:todo ที่ priority สูงสุด (P0→P3) และ dependency ปิดแล้ว
        ├─ MAKER (Claude): ทำงาน + เขียน task record docs/autopilot/tasks/NNNN-*.md
        ├─ gate 1: npm test · npm run lint · npm run build
-       ├─ gate 2: REVIEWER = Codex (`codex review --base main`) ถ้าไม่มีใช้ Claude session แยก (read-only)
+       ├─ gate 2: REVIEWER = Claude session แยก (read-only)
        ├─ gate 3: VISUAL (เฉพาะเมื่อแตะ src/app, src/components หรือ issue มี "UI pages")
        │     ui_review.mjs ถ่ายเต็มหน้าที่ 375/768/1440 ของ main และ branch แล้วเทียบกัน
        │     + Claude visual reviewer เปิดดูทุกภาพเทียบกับ ui-quality-gate.md
@@ -184,11 +183,9 @@ Depends on #12            ← (ถ้ามี) รอให้ #12 ปิดก
    ```bash
    infisical run --projectId "$INFISICAL_PROJECT_ID" --env dev --path /telegram --silent -- sh -c 'gh secret set TELEGRAM_BOT_TOKEN -R bookchaowalit-website/productivity-tracking-web --body "$TELEGRAM_NOTI_BOT_TOKEN" && gh secret set TELEGRAM_CHAT_ID -R bookchaowalit-website/productivity-tracking-web --body "$TELEGRAM_NOTI_CHAT_ID"'
    ```
-3. (ไม่บังคับ) ให้ Codex เป็น reviewer ใน CI: ตั้ง secret `CODEX_AUTH_JSON` จาก `~/.codex/auth.json` ถ้าไม่ตั้ง loop จะใช้ Claude session แยกเป็น reviewer แทน
-   ข้อควรระวัง: token ของ ChatGPT มีการ refresh อาจหมดอายุใน CI ได้ ถ้า review ล้มเหลวจะ fallback ไปใช้ Claude ให้อัตโนมัติ
-4. ทดสอบด้วย Actions → autopilot → Run workflow → `mode: dry-run`
-5. ลองรันจริงงานเดียว: `mode: real`, `max_tasks: 1`
-6. เปิดรอบอัตโนมัติ:
+3. ทดสอบด้วย Actions → autopilot → Run workflow → `mode: dry-run`
+4. ลองรันจริงงานเดียว: `mode: real`, `max_tasks: 1`
+5. เปิดรอบอัตโนมัติ:
    ```bash
    gh variable set AUTOPILOT_ENABLED -R bookchaowalit-website/productivity-tracking-web --body true
    ```
@@ -206,7 +203,7 @@ python3 .autopilot/autopilot.py --dry-run
 
 | ไฟล์ | หน้าที่ |
 |---|---|
-| `.autopilot/autopilot.py` | engine (Python stdlib + `gh`, `git`, `claude`, `codex`) · Codex รีวิวผ่าน `codex exec -s read-only` เพราะ `codex review --base` รับ prompt ของตัวเองไม่ได้ |
+| `.autopilot/autopilot.py` | engine (Python stdlib + `gh`, `git`, `claude`) · reviewer เป็น Claude session แยกที่ใช้ tool แบบ read-only |
 | `.autopilot/config.json` | เพดาน, gate, protected paths, label, การแจ้งเตือน |
 | `.autopilot/prompts/{maker,reviewer,visual,planner}.md` | prompt ของแต่ละ agent |
 | `.github/workflows/autopilot.yml` | cron + manual run (action pin ด้วย SHA) |
