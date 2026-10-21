@@ -196,4 +196,4 @@ Metric definitions: [`docs/measurement/kpi-and-instrumentation-plan.md`](../../d
 |---|---|---|---|---|
 | Spec ready (before code, DoR) | Reviewer (checker) | Fresh Claude reviewer / 2026-10-21 | R1 revise (3 P1) → fixed in 0.2; R2 **pass** with one P2 (§4 wording) fixed in 0.3 | [`reviews/R1.md`](./reviews/R1.md) |
 | Spec ready (before code, DoR) | Approver | Owner / 2026-10-21 | **approve** | "อนุมัติ SPEC-001 v0.3 (DoR) วันนี้ เริ่มเขียนโค้ดแบบ test-first ได้เลย และเรื่อง Q-3 ให้เก็บ Vercel Analytics ไว้เป็น page layer" |
-| Implemented (DoD) | Reviewer (checker) | Fresh Claude reviewer / 2026-10-21 | **pass** (red reproduced at 2c561e6; 0 P1, 1 P2 + 3 P3 fixed in bc303a4) | CI run URL: see change log 0.4 |
+| Implemented (DoD) | Reviewer (checker) | Fresh Claude reviewer / 2026-10-21 | **pass** (red reproduced at 2c561e6; 0 P1, 1 P2 + 3 P3 fixed in bc303a4) | No push-triggered CI in this repo (only the autopilot cron); green evidence is the local full suite, `npm test` 98/98 on merged `main` 5c39de1, plus `tsc` and `next build` |
