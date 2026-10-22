@@ -500,7 +500,7 @@ export default function DashboardPage() {
 
         {/* Category Tabs */}
         <Tabs value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as ContentCategory | 'all')} className="mb-8">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 lg:grid-cols-10">
+          <TabsList className="flex w-full justify-start">
             <TabsTrigger value="all" className="flex items-center gap-2">
               <MoreHorizontal className="w-4 h-4" />
               All
