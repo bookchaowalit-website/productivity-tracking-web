@@ -16,12 +16,14 @@ npm install   # or npm ci if lockfile present
 npm run dev
 # production build (if available)
 npm run build
+# automated tests (node --test)
+npm test
 ```
 
 Package name: `book-tracking`  
-Scripts seen: dev, build, start, lint, postinstall, prisma:generate, prisma:push, prisma:migrate, prisma:deploy, prisma:studio, prisma:reset, seed  
+Scripts seen: dev, build, start, lint, test, postinstall, prisma:generate, prisma:push, prisma:migrate, prisma:deploy, prisma:studio, prisma:reset, seed  
 Docker marker: no  
-Tests signal: no
+Tests signal: yes — `npm test` runs `node --test tests/*.test.cjs` (6 suites, 98 tests passing on 2026-10-22)
 
 ## Claim classes
 
@@ -34,8 +36,9 @@ Tests signal: no
 
 ## Limitations (honest)
 
-- No automated test suite signal found in-tree (or only template residue).
-- No PRODUCT.md — showcase depth, not full interview case study.
+- Automated tests exist: `npm test` (`node --test tests/*.test.cjs`) runs the `analytics`, `internal-tracking`, `tracking-analytics`, `tracking-auth`, `tracking-proxy` and `tracking-writes` suites against in-memory fixtures and mocked `fetch`; shared loader in `tests/helpers/`.
+- The suites cover server routes and helpers only; there are no browser/UI end-to-end tests, and nothing here was run against a real database or production.
+- PRODUCT.md exists, but this remains showcase depth, not a full interview case study.
 
 ## Do not
 
