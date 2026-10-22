@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { signIn, signOut, useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -163,7 +163,6 @@ const _statusIcons: Record<TrackingStatus, React.ReactNode> = {
 
 export default function DashboardPage() {
   const [trackingItems, setTrackingItems] = useState<TrackingItem[]>([])
-  const [filteredItems, setFilteredItems] = useState<TrackingItem[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<ContentCategory | 'all'>('all')
@@ -183,7 +182,7 @@ export default function DashboardPage() {
   const readGeneration = useRef(0)
   const pendingRead = useRef<AbortController | null>(null)
 
-  const readDemoItems = () => {
+  const readDemoItems = useCallback(() => {
     try {
       const stored = window.localStorage.getItem(DEMO_STORAGE_KEY)
       if (stored) return JSON.parse(stored) as TrackingItem[]
@@ -191,23 +190,23 @@ export default function DashboardPage() {
       console.warn('Unable to read local demo data:', error)
     }
     return DEMO_ITEMS
-  }
+  }, [])
 
-  const saveDemoItems = (items: TrackingItem[]) => {
+  const saveDemoItems = useCallback((items: TrackingItem[]) => {
     try {
       window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(items))
     } catch (error) {
       console.warn('Unable to save local demo data:', error)
     }
-  }
+  }, [])
 
-  const activateDemoMode = (notice = DEMO_NOTICE) => {
+  const activateDemoMode = useCallback((notice = DEMO_NOTICE) => {
     const items = readDemoItems()
     setIsDemoMode(true)
     setDataNotice(notice)
     setTrackingItems(items)
     saveDemoItems(items)
-  }
+  }, [readDemoItems, saveDemoItems])
 
   const updateDemoItems = (update: (_items: TrackingItem[]) => TrackingItem[]) => {
     const currentItems = trackingItems.length > 0 ? trackingItems : readDemoItems()
@@ -218,29 +217,7 @@ export default function DashboardPage() {
     saveDemoItems(nextItems)
   }
 
-  useEffect(() => {
-    readGeneration.current += 1
-    pendingRead.current?.abort()
-    pendingRead.current = null
-    // Never keep the previous identity's list while the next one loads.
-    setTrackingItems([])
-    setIsDemoMode(false)
-    setDataNotice(null)
-    if (authStatus === 'loading') return
-    if (authStatus === 'authenticated') {
-      setLoading(true)
-      fetchTrackingItems()
-    } else {
-      activateDemoMode(SIGNED_OUT_NOTICE)
-      setLoading(false)
-    }
-  }, [sessionKey])
-
-  useEffect(() => {
-    filterItems()
-  }, [trackingItems, searchQuery, selectedCategory, selectedStatus, showFavoritesOnly])
-
-  const fetchTrackingItems = async () => {
+  const fetchTrackingItems = useCallback(async () => {
     const generation = readGeneration.current
     const controller = new AbortController()
     pendingRead.current?.abort()
@@ -265,7 +242,25 @@ export default function DashboardPage() {
       if (pendingRead.current === controller) pendingRead.current = null
       if (!isStale()) setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    readGeneration.current += 1
+    pendingRead.current?.abort()
+    pendingRead.current = null
+    // Never keep the previous identity's list while the next one loads.
+    setTrackingItems([])
+    setIsDemoMode(false)
+    setDataNotice(null)
+    if (authStatus === 'loading') return
+    if (authStatus === 'authenticated') {
+      setLoading(true)
+      fetchTrackingItems()
+    } else {
+      activateDemoMode(SIGNED_OUT_NOTICE)
+      setLoading(false)
+    }
+  }, [sessionKey, authStatus, activateDemoMode, fetchTrackingItems])
 
   // Signed-in writes go to the API only. The server takes the user from the
   // session; the body names the user this view shows only as an assertion, so
@@ -297,7 +292,7 @@ export default function DashboardPage() {
     }
   }
 
-  const filterItems = () => {
+  const filteredItems = useMemo(() => {
     let filtered = [...trackingItems]
 
     if (searchQuery) {
@@ -324,8 +319,8 @@ export default function DashboardPage() {
       )
     }
 
-    setFilteredItems(filtered)
-  }
+    return filtered
+  }, [trackingItems, searchQuery, selectedCategory, selectedStatus, showFavoritesOnly])
 
   const handleAddItem = async (itemData: AddItemForm) => {
     const addLocalItem = () => {
