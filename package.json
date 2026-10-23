@@ -51,7 +51,6 @@
     "lucide-react": "^0.441.0",
     "next": "15.5.28",
     "next-auth": "^4.24.10",
-    "nodemailer": "^7.0.13",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-hook-form": "^7.53.0",
@@ -67,13 +66,15 @@
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.0",
     "eslint-config-next": "15.5.28",
-    "postcss": "^8.4.45",
+    "postcss": "^8.5.31",
     "prisma": "^5.19.0",
     "tailwindcss": "^3.4.10",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4"
   },
   "overrides": {
-    "sharp": "^0.35.5"
+    "sharp": "^0.35.5",
+    "postcss": "^8.5.31",
+    "nodemailer": "^10.0.10"
   }
 }

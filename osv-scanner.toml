@@ -1,0 +1,16 @@
+# Accepted findings with no compatible fix. Each entry expires; re-check on or before ignoreUntil.
+
+# braces <= 3.0.3 has no fixed release (GHSA-vfj7-8cjw-p6xm, stack exhaustion on deeply nested
+# patterns). Dev/build-only (tailwindcss > chokidar/micromatch > braces), never shipped to the
+# browser and never fed user input.
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+ignoreUntil = 2027-01-31
+reason = "braces (build tooling only) has no fixed release; not reachable from user input"
+
+# postcss-selector-parser 6.x: the fix is only in 7.x, but tailwindcss 3 requires ^6.1.2.
+# It parses the repo's own CSS at build time, never request data. Clears with Tailwind 4.
+[[IgnoredVulns]]
+id = "GHSA-rj75-hqrm-r3gf"
+ignoreUntil = 2027-01-31
+reason = "postcss-selector-parser fix needs 7.x, incompatible with tailwindcss 3; build-time only on first-party CSS"
