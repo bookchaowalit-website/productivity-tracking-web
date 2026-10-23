@@ -36,6 +36,22 @@ describe('scrubEvent', () => {
     for (const key of ['request', 'user', 'breadcrumbs', 'extra']) assert.equal(key in event, false, key);
   });
 
+  test('drops the request path that captureRequestError adds and strips query strings', () => {
+    const event = sentry.scrubEvent({
+      transaction: 'GET /api/tracking?search=private&userId=u1',
+      tags: { url: 'https://tracking.bookchaowalit.com/api/tracking?search=private', route: '/api/tracking?search=private' },
+      contexts: {
+        nextjs: { request_path: '/api/tracking?search=private', router_kind: 'App Router', route_type: 'route' },
+        trace: { trace_id: 't' },
+        runtime: { name: 'node' },
+      },
+    });
+    assert.equal(event.transaction, 'GET /api/tracking');
+    assert.deepEqual(event.tags, { route: '/api/tracking' });
+    assert.deepEqual(event.contexts, { runtime: { name: 'node' } });
+    assert.equal(JSON.stringify(event).includes('private'), false);
+  });
+
   test('removes local variables from every stack frame', () => {
     const event = sentry.scrubEvent({
       exception: {
