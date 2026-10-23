@@ -34,7 +34,7 @@ segments, referrer paths and `$ip`.
 | Call | When | Value | Test |
 |---|---|---|---|
 | `identify` | signed-in session, after consent | `User.id` (cuid, pseudonymous); emails or free text are refused | `tests/browser-analytics.test.cjs` |
-| `reset` | sign-out, after consent | — | `tests/posthog-adapter.test.cjs` |
+| `forgetIdentity` → `reset` | signed out (also on a later page load), after consent, only if a user was identified on this browser | — | `tests/browser-analytics.test.cjs`, `tests/posthog-adapter.test.cjs` |
 
 ## Never sent
 

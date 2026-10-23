@@ -10,6 +10,9 @@ import { loadPostHog } from './posthog-adapter'
 export const PRODUCT = 'trackit'
 export const DEFAULT_HOST = 'https://eu.i.posthog.com'
 export const CONSENT_KEY = 'trackit.analytics-consent.v1'
+// Set while PostHog holds an identified user, so a sign-out seen on a later
+// page load still resets it (the next visitor on this browser starts anonymous).
+export const IDENTIFIED_KEY = 'trackit.analytics-identified.v1'
 
 export type Consent = 'granted' | 'denied' | 'unknown'
 export type EventProps = Record<string, string | number | boolean>
@@ -127,6 +130,22 @@ export function createAnalytics({
   let adapter: Promise<AnalyticsAdapter | null> | null = null
   const listeners = new Set<(_value: Consent) => void>()
 
+  const mark = (identified: boolean) => {
+    try {
+      if (identified) storage?.setItem(IDENTIFIED_KEY, '1')
+      else storage?.removeItem(IDENTIFIED_KEY)
+    } catch {
+      // private mode: nothing persisted, nothing to forget
+    }
+  }
+  const isMarked = () => {
+    try {
+      return storage?.getItem(IDENTIFIED_KEY) === '1'
+    } catch {
+      return false
+    }
+  }
+
   const withAdapter = (call: (_adapter: AnalyticsAdapter) => void) => {
     if (!config || consent !== 'granted') return
     // A failed SDK download must never break the page.
@@ -148,7 +167,10 @@ export function createAnalytics({
       } catch {
         // private mode: the choice lasts for this page view only
       }
-      if (value === 'denied' && wasGranted && adapter) void adapter.then((a) => a?.optOut())
+      if (value === 'denied') {
+        if (wasGranted && adapter) void adapter.then((a) => a?.optOut())
+        mark(false)
+      }
       listeners.forEach((listener) => listener(value))
     },
     subscribe(listener: (_value: Consent) => void) {
@@ -162,14 +184,20 @@ export function createAnalytics({
       if (clean) withAdapter((a) => a.track(event, clean))
     },
     identify(id: string) {
-      if (ID_PATTERN.test(id)) withAdapter((a) => a.identify(id))
+      if (!ID_PATTERN.test(id) || !config || consent !== 'granted') return
+      mark(true)
+      withAdapter((a) => a.identify(id))
     },
     page(url: string) {
       const path = sanitizePath(url)
       withAdapter((a) => a.page(path))
     },
-    reset() {
-      if (adapter) withAdapter((a) => a.reset())
+    // Call whenever the visitor is signed out: resets only if a user was
+    // identified on this browser, so anonymous visits keep one anonymous id.
+    forgetIdentity() {
+      if (!config || consent !== 'granted' || !isMarked()) return
+      mark(false)
+      withAdapter((a) => a.reset())
     },
   }
 }

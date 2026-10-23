@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { analytics } from '@/lib/browser-analytics'
@@ -15,7 +15,6 @@ export function AnalyticsProvider() {
   const consent = useSyncExternalStore(analytics.subscribe, analytics.consent, () => 'unknown' as const)
   const [reopened, setReopened] = useState(false)
   const userId = status === 'authenticated' ? session?.user?.id : undefined
-  const identified = useRef<string | null>(null)
 
   useEffect(() => {
     if (consent === 'granted' && pathname) analytics.page(pathname)
@@ -23,14 +22,9 @@ export function AnalyticsProvider() {
 
   useEffect(() => {
     if (consent !== 'granted') return
-    if (userId && identified.current !== userId) {
-      analytics.identify(userId)
-      identified.current = userId
-    } else if (!userId && status === 'unauthenticated' && identified.current) {
-      // Sign-out: forget the link so the next visitor on this browser is new.
-      analytics.reset()
-      identified.current = null
-    }
+    if (userId) analytics.identify(userId)
+    // Signed out (now, or before this page load): forget any stored identity.
+    else if (status === 'unauthenticated') analytics.forgetIdentity()
   }, [userId, status, consent])
 
   const choose = (value: 'granted' | 'denied') => {

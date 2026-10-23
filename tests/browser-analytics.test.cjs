@@ -77,7 +77,7 @@ test('flag off or no key: no adapter load and no network call, even after consen
     a.page('/');
     a.track('collection_filtered', { filter: 'search' });
     a.identify('clx0abcdef0000000000000000');
-    a.reset();
+    a.forgetIdentity();
     await flush();
     assert.equal(r.loads(), 0);
     assert.deepEqual(r.calls, []);
@@ -212,4 +212,41 @@ test('subscribers hear consent changes', () => {
   off();
   a.setConsent('denied');
   assert.deepEqual(heard, ['granted']);
+});
+
+test('sign-out after a reload still forgets the identified user (stored marker, not memory)', async () => {
+  const storage = memoryStorage();
+  const first = recorder();
+  const before = core.createAnalytics({ config: core.readConfig(ON), load: first.load, storage });
+  before.setConsent('granted');
+  before.identify('clx0abcdef0000000000000000');
+  await flush();
+  assert.equal(storage.getItem(core.IDENTIFIED_KEY), '1');
+
+  // New page load (fresh module state), visitor is now signed out.
+  const second = recorder();
+  const after = core.createAnalytics({ config: core.readConfig(ON), load: second.load, storage });
+  after.forgetIdentity();
+  await flush();
+  assert.deepEqual(second.calls, [['reset']]);
+  assert.equal(storage.getItem(core.IDENTIFIED_KEY), null);
+
+  // Nothing stored: an anonymous visit never resets (keeps one anonymous id).
+  const third = recorder();
+  const anon = core.createAnalytics({ config: core.readConfig(ON), load: third.load, storage });
+  anon.forgetIdentity();
+  await flush();
+  assert.deepEqual(third.calls, []);
+});
+
+test('declining after identify clears the stored marker', async () => {
+  const storage = memoryStorage();
+  const r = recorder();
+  const a = core.createAnalytics({ config: core.readConfig(ON), load: r.load, storage });
+  a.setConsent('granted');
+  a.identify('clx0abcdef0000000000000000');
+  await flush();
+  a.setConsent('denied');
+  await flush();
+  assert.equal(storage.getItem(core.IDENTIFIED_KEY), null);
 });
