@@ -19,7 +19,7 @@ function fakePostHog() {
 test('init options: no autocapture, no recordings, no surveys, no flags, masked text, manual pageviews', () => {
   const options = adapter.posthogOptions('https://eu.i.posthog.com');
   assert.equal(options.api_host, 'https://eu.i.posthog.com');
-  for (const key of ['autocapture', 'capture_pageview', 'capture_pageleave', 'capture_heatmaps', 'capture_dead_clicks',
+  for (const key of ['autocapture', 'capture_pageview', 'capture_pageleave', 'capture_heatmaps', 'capture_dead_clicks', 'save_campaign_params',
     'capture_exceptions', 'rageclick']) {
     assert.equal(options[key], false, key);
   }

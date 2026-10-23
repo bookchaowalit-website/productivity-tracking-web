@@ -62,6 +62,8 @@ export function posthogOptions(host: string): Partial<PostHogConfig> {
     capture_dead_clicks: false,
     capture_exceptions: false,
     rageclick: false,
+    // UTM values come from the query string, which is never kept.
+    save_campaign_params: false,
     disable_session_recording: true,
     session_recording: { maskAllInputs: true },
     disable_surveys: true,
