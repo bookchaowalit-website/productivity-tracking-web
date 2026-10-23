@@ -1,0 +1,47 @@
+{
+  "$comment": "TrackIt pilot dashboard (PostHog EU). Create each insight as SQL (HogQL) in PostHog after sign-up; names and KPI IDs follow docs/measurement/KPI-PLAN.md. Layer-1 KPIs (KPI-O-01, KPI-L-01, KPI-L-03) are SQL on the app database in analytics/kpi/, not PostHog.",
+  "dashboard": "TrackIt pilot",
+  "product": "trackit",
+  "insights": [
+    {
+      "name": "First-event check (last 24 h)",
+      "kpi": null,
+      "events": ["$pageview", "collection_filtered", "tracking_item_added", "tracking_updated", "tracking_item_completed", "tracking_item_removed", "tracking_write_failed"],
+      "query": {
+        "kind": "HogQLQuery",
+        "query": "SELECT event, count() AS events, max(timestamp) AS last_seen FROM events WHERE properties.product = 'trackit' AND timestamp >= now() - INTERVAL 1 DAY GROUP BY event ORDER BY events DESC"
+      }
+    },
+    {
+      "name": "KPI-L-02 Updates per active user per week",
+      "kpi": "KPI-L-02",
+      "min_volume": "20 active users per week, else not measurable",
+      "events": ["tracking_updated", "tracking_item_added", "tracking_item_removed"],
+      "query": {
+        "kind": "HogQLQuery",
+        "query": "SELECT toStartOfWeek(timestamp) AS week, uniqIf(distinct_id, event IN ('tracking_item_added', 'tracking_updated', 'tracking_item_removed')) AS active_users, countIf(event = 'tracking_updated') AS updates, if(active_users >= 20, round(updates / active_users, 2), NULL) AS updates_per_active_user FROM events WHERE properties.product = 'trackit' AND timestamp >= now() - INTERVAL 12 WEEK GROUP BY week ORDER BY week"
+      }
+    },
+    {
+      "name": "KPI-L-04 Find usage rate (consented visitors)",
+      "kpi": "KPI-L-04",
+      "min_volume": "20 consented visitors per week, else not measurable",
+      "events": ["$pageview", "collection_filtered"],
+      "query": {
+        "kind": "HogQLQuery",
+        "query": "SELECT toStartOfWeek(timestamp) AS week, uniqIf(person_id, event = '$pageview') AS visitors, uniqIf(person_id, event = 'collection_filtered') AS finders, if(visitors >= 20, round(100 * finders / visitors, 1), NULL) AS find_usage_pct FROM events WHERE properties.product = 'trackit' AND timestamp >= now() - INTERVAL 12 WEEK GROUP BY week ORDER BY week"
+      }
+    },
+    {
+      "name": "KPI-G-01 Tracking write server-error rate",
+      "kpi": "KPI-G-01",
+      "min_volume": "100 writes per day, else not measurable",
+      "alert": "> 5% over 24 h with >= 100 writes",
+      "events": ["tracking_write_failed", "tracking_item_added", "tracking_updated", "tracking_item_removed"],
+      "query": {
+        "kind": "HogQLQuery",
+        "query": "SELECT toStartOfDay(timestamp) AS day, countIf(event IN ('tracking_item_added', 'tracking_updated', 'tracking_item_removed', 'tracking_write_failed')) AS writes, countIf(event = 'tracking_write_failed' AND toInt(properties.status_code) >= 500) AS server_errors, if(writes >= 100, round(100 * server_errors / writes, 2), NULL) AS server_error_rate_pct FROM events WHERE properties.product = 'trackit' AND timestamp >= now() - INTERVAL 30 DAY GROUP BY day ORDER BY day"
+      }
+    }
+  ]
+}

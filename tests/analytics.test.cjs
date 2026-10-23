@@ -6,7 +6,10 @@ const { loadRoute } = require('./helpers/load-route.cjs');
 // `fetch` is replaced by a recorder; nothing leaves the process.
 const { route: analytics } = loadRoute('src/lib/analytics.ts');
 
-const ENV_KEYS = ['POSTHOG_PROJECT_KEY', 'POSTHOG_HOST', 'POSTHOG_TIMEOUT_MS'];
+const ENV_KEYS = [
+  'POSTHOG_PROJECT_KEY', 'POSTHOG_HOST', 'POSTHOG_TIMEOUT_MS',
+  'NEXT_PUBLIC_ANALYTICS_ENABLED', 'NEXT_PUBLIC_POSTHOG_KEY', 'NEXT_PUBLIC_POSTHOG_HOST',
+];
 const originalEnv = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
 const originalFetch = global.fetch;
 let requests;
@@ -16,6 +19,8 @@ beforeEach(() => {
   requests = [];
   warnings = [];
   for (const key of ENV_KEYS) delete process.env[key];
+  // The kill switch is on in these tests; the flag tests below turn it off.
+  process.env.NEXT_PUBLIC_ANALYTICS_ENABLED = 'true';
   global.fetch = async (url, init) => {
     requests.push({ url: String(url), init, body: JSON.parse(init.body) });
     return new Response('{"status":"Ok"}', { status: 200 });
@@ -39,6 +44,26 @@ test('no key: no request (AC-01)', async () => {
   await analytics.track('tracking_item_added', 'user-a', { category: 'ANIME' });
   assert.equal(requests.length, 0);
   assert.equal(warnings.length, 0);
+});
+
+test('flag off: no request even with a key (W4 pilot kill switch)', async () => {
+  process.env.POSTHOG_PROJECT_KEY = 'phc_test_only';
+  for (const flag of [undefined, '', 'false', '1', 'TRUE ']) {
+    if (flag === undefined) delete process.env.NEXT_PUBLIC_ANALYTICS_ENABLED;
+    else process.env.NEXT_PUBLIC_ANALYTICS_ENABLED = flag;
+    await analytics.track('tracking_item_added', 'user-a', { category: 'ANIME' });
+  }
+  assert.equal(requests.length, 0);
+  assert.equal(warnings.length, 0);
+});
+
+test('falls back to the public key and host the browser uses', async () => {
+  process.env.NEXT_PUBLIC_POSTHOG_KEY = 'phc_public_only';
+  process.env.NEXT_PUBLIC_POSTHOG_HOST = 'https://eu.ingest.example.test';
+  await analytics.track('tracking_item_removed', 'user-a', { category: 'BOOK' });
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].url, 'https://eu.ingest.example.test/i/v0/e/');
+  assert.equal(requests[0].body.api_key, 'phc_public_only');
 });
 
 test('sends allow-listed event (AC-02)', async () => {

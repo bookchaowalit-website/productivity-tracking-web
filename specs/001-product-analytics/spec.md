@@ -2,7 +2,7 @@
 
 Standard: [ADR-0004 — TDD + SDD](https://github.com/bookchaowalit/architecture-docs/blob/main/docs/architecture/decisions/ADR-0004-tdd-sdd-standard.md).
 Analytics standard: [ADR-0005](https://github.com/bookchaowalit/architecture-docs/blob/main/docs/architecture/decisions/ADR-0005-product-analytics-standard.md).
-Metric definitions: [`docs/measurement/kpi-and-instrumentation-plan.md`](../../docs/measurement/kpi-and-instrumentation-plan.md).
+Metric definitions: [`docs/measurement/KPI-PLAN.md`](../../docs/measurement/KPI-PLAN.md).
 
 ## Document control
 

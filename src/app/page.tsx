@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { analytics } from '@/lib/browser-analytics'
 import {
   Plus,
   Search,
@@ -322,6 +323,14 @@ export default function DashboardPage() {
     return filtered
   }, [trackingItems, searchQuery, selectedCategory, selectedStatus, showFavoritesOnly])
 
+  // One count per search, not per keystroke; the query text is never sent.
+  const hasSearch = searchQuery.trim() !== ''
+  useEffect(() => {
+    if (!hasSearch) return
+    const timer = setTimeout(() => analytics.track('collection_filtered', { filter: 'search' }), 800)
+    return () => clearTimeout(timer)
+  }, [hasSearch])
+
   const handleAddItem = async (itemData: AddItemForm) => {
     const addLocalItem = () => {
       const item: TrackingItem = {
@@ -490,7 +499,10 @@ export default function DashboardPage() {
             </div>
             <Button
               variant={showFavoritesOnly ? 'default' : 'outline'}
-              onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+              onClick={() => {
+                setShowFavoritesOnly(!showFavoritesOnly)
+                analytics.track('collection_filtered', { filter: 'favorites' })
+              }}
             >
               <Heart className={`w-5 h-5 mr-2 ${showFavoritesOnly ? 'fill-current' : ''}`} />
               Favorites only
@@ -499,7 +511,14 @@ export default function DashboardPage() {
         </div>
 
         {/* Category Tabs */}
-        <Tabs value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as ContentCategory | 'all')} className="mb-8">
+        <Tabs
+          value={selectedCategory}
+          onValueChange={(value) => {
+            setSelectedCategory(value as ContentCategory | 'all')
+            analytics.track('collection_filtered', { filter: 'category' })
+          }}
+          className="mb-8"
+        >
           <TabsList className="flex w-full justify-start">
             <TabsTrigger value="all" className="flex items-center gap-2">
               <MoreHorizontal className="w-4 h-4" />
@@ -548,7 +567,10 @@ export default function DashboardPage() {
             <Button
               variant={selectedStatus === 'all' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setSelectedStatus('all')}
+              onClick={() => {
+                setSelectedStatus('all')
+                analytics.track('collection_filtered', { filter: 'status' })
+              }}
             >
               All Status
             </Button>
@@ -557,7 +579,10 @@ export default function DashboardPage() {
                 key={value}
                 variant={selectedStatus === value ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setSelectedStatus(value)}
+                onClick={() => {
+                  setSelectedStatus(value)
+                  analytics.track('collection_filtered', { filter: 'status' })
+                }}
               >
                 {statusLabels[value]}
               </Button>

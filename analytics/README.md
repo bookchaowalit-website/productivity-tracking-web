@@ -1,13 +1,14 @@
 # Analytics
 
 Pilot of [ADR-0005 — product analytics standard](https://github.com/bookchaowalit/architecture-docs/blob/main/docs/architecture/decisions/ADR-0005-product-analytics-standard.md).
-Metric definitions live only in [`docs/measurement/kpi-and-instrumentation-plan.md`](../docs/measurement/kpi-and-instrumentation-plan.md);
+Metric definitions live only in [`docs/measurement/KPI-PLAN.md`](../docs/measurement/KPI-PLAN.md);
 files here implement them.
 
 | Layer | What | Where |
 |---|---|---|
 | 1 — system of record | KPIs computed by SQL from this app's database | `kpi/<KPI-ID>-*.sql` |
-| 2 — product analytics | Server-side events to PostHog Cloud EU | `src/lib/analytics.ts` (planned, [SPEC-001](../specs/001-product-analytics/spec.md)) |
+| 2 — product analytics | Server-side events to PostHog Cloud EU ([SPEC-001](../specs/001-product-analytics/spec.md)); consent-gated browser events (W4 pilot) | `src/lib/analytics.ts` (server), `src/lib/browser-analytics.ts` + `posthog-adapter.ts` (browser); all off until `NEXT_PUBLIC_ANALYTICS_ENABLED=true` and a key |
+| Dashboards | PostHog insights as HogQL, created by hand once the key exists | `posthog/dashboard.json` |
 | 3 — page analytics | Existing Vercel Web Analytics + Speed Insights (cookieless) | `src/app/layout.tsx` — kept as TrackIt's page layer (owner, 2026-10-21; ADR-0005 D-7 exception) |
 
 ## Running a layer-1 query

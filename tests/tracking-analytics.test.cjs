@@ -215,7 +215,9 @@ test('write succeeds when analytics fails (AC-04)', async () => {
   const withRealAnalytics = loadInternal(realAnalytics);
   const originalFetch = global.fetch;
   const originalKey = process.env.POSTHOG_PROJECT_KEY;
+  const originalFlag = process.env.NEXT_PUBLIC_ANALYTICS_ENABLED;
   process.env.POSTHOG_PROJECT_KEY = 'phc_test_only';
+  process.env.NEXT_PUBLIC_ANALYTICS_ENABLED = 'true';
   global.fetch = async () => { throw new Error('network down'); };
   mock.method(console, 'warn', () => {});
   try {
@@ -229,6 +231,8 @@ test('write succeeds when analytics fails (AC-04)', async () => {
     global.fetch = originalFetch;
     if (originalKey === undefined) delete process.env.POSTHOG_PROJECT_KEY;
     else process.env.POSTHOG_PROJECT_KEY = originalKey;
+    if (originalFlag === undefined) delete process.env.NEXT_PUBLIC_ANALYTICS_ENABLED;
+    else process.env.NEXT_PUBLIC_ANALYTICS_ENABLED = originalFlag;
   }
 });
 
@@ -237,8 +241,13 @@ const withRealAnalytics = async (fetchImpl, run) => {
   const { route: realAnalytics } = loadRoute('src/lib/analytics.ts');
   const route = loadInternal(realAnalytics);
   const originalFetch = global.fetch;
-  const saved = { key: process.env.POSTHOG_PROJECT_KEY, timeout: process.env.POSTHOG_TIMEOUT_MS };
+  const saved = {
+    key: process.env.POSTHOG_PROJECT_KEY,
+    timeout: process.env.POSTHOG_TIMEOUT_MS,
+    flag: process.env.NEXT_PUBLIC_ANALYTICS_ENABLED,
+  };
   process.env.POSTHOG_PROJECT_KEY = 'phc_test_only';
+  process.env.NEXT_PUBLIC_ANALYTICS_ENABLED = 'true';
   process.env.POSTHOG_TIMEOUT_MS = '50';
   global.fetch = fetchImpl;
   const warnings = [];
@@ -248,7 +257,11 @@ const withRealAnalytics = async (fetchImpl, run) => {
   } finally {
     global.fetch = originalFetch;
     mock.timers.reset();
-    for (const [name, value] of [['POSTHOG_PROJECT_KEY', saved.key], ['POSTHOG_TIMEOUT_MS', saved.timeout]]) {
+    for (const [name, value] of [
+      ['POSTHOG_PROJECT_KEY', saved.key],
+      ['POSTHOG_TIMEOUT_MS', saved.timeout],
+      ['NEXT_PUBLIC_ANALYTICS_ENABLED', saved.flag],
+    ]) {
       if (value === undefined) delete process.env[name];
       else process.env[name] = value;
     }

@@ -1,7 +1,10 @@
 // Server-side product analytics (SPEC-001, ADR-0005 layer 2).
-// Sends one event to the PostHog capture API. Analytics is optional: with no
-// project key nothing is sent, and a failure or timeout is logged and
-// swallowed, so it can never change an API response.
+// Sends one event to the PostHog capture API. Analytics is optional: unless
+// NEXT_PUBLIC_ANALYTICS_ENABLED is exactly "true" and a project key is set,
+// nothing is sent, and a failure or timeout is logged and swallowed, so it can
+// never change an API response. The key and host fall back to the public
+// values the browser module uses, so go-live needs only the three
+// NEXT_PUBLIC_* variables (docs/measurement/GO-LIVE.md).
 
 const DEFAULT_HOST = 'https://eu.i.posthog.com';
 const DEFAULT_TIMEOUT_MS = 2000;
@@ -23,14 +26,15 @@ function timeoutMs(): number {
 }
 
 export async function track(event: string, userId: string, props: Record<string, unknown> = {}): Promise<void> {
-    const apiKey = process.env.POSTHOG_PROJECT_KEY?.trim();
+    if (process.env.NEXT_PUBLIC_ANALYTICS_ENABLED !== 'true') return;
+    const apiKey = (process.env.POSTHOG_PROJECT_KEY || process.env.NEXT_PUBLIC_POSTHOG_KEY)?.trim();
     if (!apiKey || !userId || !Object.prototype.hasOwnProperty.call(ALLOWED_PROPERTIES, event)) return;
 
     const properties: Record<string, unknown> = {};
     for (const key of ALLOWED_PROPERTIES[event]) {
         if (key in props) properties[key] = props[key];
     }
-    const host = (process.env.POSTHOG_HOST?.trim() || DEFAULT_HOST).replace(/\/+$/, '');
+    const host = (process.env.POSTHOG_HOST?.trim() || process.env.NEXT_PUBLIC_POSTHOG_HOST?.trim() || DEFAULT_HOST).replace(/\/+$/, '');
     const body = JSON.stringify({
         api_key: apiKey,
         event,
