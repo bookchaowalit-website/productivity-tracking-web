@@ -25,7 +25,7 @@ export function ConsentBanner({ onAccept, onDecline }: { onAccept: () => void; o
       </p>
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
         <Button variant="outline" size="default" onClick={onDecline}>Decline</Button>
-        <Button variant="default" size="default" onClick={onAccept}>Allow analytics</Button>
+        <Button variant="outline" size="default" onClick={onAccept}>Allow analytics</Button>
       </div>
     </div>
   )

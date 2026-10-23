@@ -250,3 +250,27 @@ test('declining after identify clears the stored marker', async () => {
   await flush();
   assert.equal(storage.getItem(core.IDENTIFIED_KEY), null);
 });
+
+test('declining before the adapter loaded keeps the marker, so a later sign-out still resets', async () => {
+  const storage = memoryStorage({ [core.CONSENT_KEY]: 'granted', [core.IDENTIFIED_KEY]: '1' });
+  const fresh = core.createAnalytics({ config: core.readConfig(ON), load: recorder().load, storage });
+  fresh.setConsent('denied');
+  await flush();
+  assert.equal(storage.getItem(core.IDENTIFIED_KEY), '1', 'PostHog still holds the identity; nothing has reset it');
+
+  const later = recorder();
+  const again = core.createAnalytics({ config: core.readConfig(ON), load: later.load, storage });
+  again.setConsent('granted');
+  again.forgetIdentity();
+  await flush();
+  assert.deepEqual(later.calls, [['reset']]);
+  assert.equal(storage.getItem(core.IDENTIFIED_KEY), null);
+});
+
+test('a failed SDK load keeps the marker for the next try', async () => {
+  const storage = memoryStorage({ [core.CONSENT_KEY]: 'granted', [core.IDENTIFIED_KEY]: '1' });
+  const a = core.createAnalytics({ config: core.readConfig(ON), load: async () => { throw new Error('blocked'); }, storage });
+  a.forgetIdentity();
+  await flush();
+  assert.equal(storage.getItem(core.IDENTIFIED_KEY), '1');
+});

@@ -167,9 +167,14 @@ export function createAnalytics({
       } catch {
         // private mode: the choice lasts for this page view only
       }
-      if (value === 'denied') {
-        if (wasGranted && adapter) void adapter.then((a) => a?.optOut())
-        mark(false)
+      // optOut also resets the stored identity. Without a loaded SDK nothing has
+      // been reset yet, so the marker stays and a later sign-out still resets.
+      if (value === 'denied' && wasGranted && adapter) {
+        void adapter.then((a) => {
+          if (!a) return
+          a.optOut()
+          mark(false)
+        })
       }
       listeners.forEach((listener) => listener(value))
     },
@@ -196,8 +201,11 @@ export function createAnalytics({
     // identified on this browser, so anonymous visits keep one anonymous id.
     forgetIdentity() {
       if (!config || consent !== 'granted' || !isMarked()) return
-      mark(false)
-      withAdapter((a) => a.reset())
+      // The marker is cleared only once the reset has really run.
+      withAdapter((a) => {
+        a.reset()
+        mark(false)
+      })
     },
   }
 }

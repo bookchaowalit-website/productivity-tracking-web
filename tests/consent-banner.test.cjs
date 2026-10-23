@@ -21,13 +21,15 @@ test('panel state: hidden when off, banner until a choice, then a small choices 
   assert.equal(banner.panelState(true, 'denied', true), 'banner');
 });
 
-test('banner: labelled region, decline and accept side by side with the same size', () => {
+test('banner: labelled region, decline and accept side by side with the same size and style', () => {
   const html = renderToStaticMarkup(React.createElement(banner.ConsentBanner, { onAccept() {}, onDecline() {} }));
   assert.match(html, /role="region"/);
   assert.match(html, /aria-label="Analytics consent"/);
-  const buttons = [...html.matchAll(/<button[^>]*data-size="([^"]+)"[^>]*>([^<]+)<\/button>/g)].map((m) => [m[1], m[2]]);
-  assert.deepEqual(buttons.map(([, label]) => label), ['Decline', 'Allow analytics']);
-  assert.equal(new Set(buttons.map(([size]) => size)).size, 1, 'same size for both choices');
+  const buttons = [...html.matchAll(/<button data-variant="([^"]+)" data-size="([^"]+)"[^>]*>([^<]+)<\/button>/g)]
+    .map((m) => ({ variant: m[1], size: m[2], label: m[3] }));
+  assert.deepEqual(buttons.map((b) => b.label), ['Decline', 'Allow analytics']);
+  assert.equal(new Set(buttons.map((b) => b.size)).size, 1, 'same size for both choices');
+  assert.equal(new Set(buttons.map((b) => b.variant)).size, 1, 'same style: accepting is not nudged');
   assert.match(html, /PostHog/);
   assert.match(html, /EU/);
   assert.doesNotMatch(html, /checked|by continuing/i, 'no pre-ticked or implied consent');
