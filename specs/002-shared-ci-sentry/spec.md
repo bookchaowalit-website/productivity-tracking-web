@@ -41,6 +41,7 @@ Plan: Big Loop, b-tier-b wave (L3 for Tier B showcases).
 | AC-03 | With a DSN: errors only — no default PII, no tracing, no trace headers, no breadcrumbs, transactions dropped | `tests/sentry.test.cjs` "reports errors only…" |
 | AC-04 | An event loses request, user, breadcrumbs, extra and stack-frame locals | `tests/sentry.test.cjs` "drops request data…", "removes local variables…" |
 | AC-05 | An event loses the `nextjs` context (request_path) and every non-platform context; query strings are cut from the transaction and string tags; `tags.url` is dropped | `tests/sentry.test.cjs` "drops the request path…" |
+| AC-07 | ?query/#hash is cut from URLs inside exception messages, frame `filename`/`abs_path` and `debug_meta` image `code_file` | `tests/sentry.test.cjs` "strips query strings and hashes from URLs…" |
 | AC-06 | The security scan reports no unreviewed vulnerability | `security` job, run 39906714882 |
 
 ## 3. Red-first evidence
@@ -49,7 +50,8 @@ Plan: Big Loop, b-tier-b wave (L3 for Tier B showcases).
 |---|---|
 | `tests/sentry.test.cjs` before `src/lib/sentry.ts` existed | `ENOENT … src/lib/sentry.ts`, 98 pass / 1 fail |
 | AC-05 case added against the first scrubber | 102 pass / 1 fail |
-| After implementation | 103 / 103 pass; `tsc --noEmit` clean; `next lint` clean; `next build` OK |
+| AC-07 case added against the second scrubber | 103 pass / 1 fail |
+| After implementation | 104 / 104 pass; `tsc --noEmit` clean; `next lint` clean; `next build` OK |
 | First CI run 39906179064 (CI only, before the dependency fix) | `web` green; `security` red on OSV + Trivy (findings above) → fixed in 17b5fde |
 
 ## 4. Interfaces and data

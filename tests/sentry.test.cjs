@@ -52,6 +52,23 @@ describe('scrubEvent', () => {
     assert.equal(JSON.stringify(event).includes('private'), false);
   });
 
+  test('strips query strings and hashes from URLs in messages, frames and debug images', () => {
+    const event = sentry.scrubEvent({
+      exception: {
+        values: [{
+          value: 'Failed to fetch https://tracking.bookchaowalit.com/api/tracking?search=private (from /?q=private#frag)',
+          stacktrace: { frames: [{ filename: 'https://tracking.bookchaowalit.com/app.js?v=private', abs_path: '/?q=private' }] },
+        }],
+      },
+      debug_meta: { images: [{ code_file: 'https://tracking.bookchaowalit.com/chunk.js?private=1' }] },
+    });
+    const value = event.exception.values[0];
+    assert.equal(value.value, 'Failed to fetch https://tracking.bookchaowalit.com/api/tracking (from /)');
+    assert.deepEqual(value.stacktrace.frames[0], { filename: 'https://tracking.bookchaowalit.com/app.js', abs_path: '/' });
+    assert.equal(event.debug_meta.images[0].code_file, 'https://tracking.bookchaowalit.com/chunk.js');
+    assert.equal(JSON.stringify(event).includes('private'), false);
+  });
+
   test('removes local variables from every stack frame', () => {
     const event = sentry.scrubEvent({
       exception: {
