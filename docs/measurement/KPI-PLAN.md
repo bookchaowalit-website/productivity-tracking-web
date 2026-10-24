@@ -1,6 +1,6 @@
 ---
 title: TrackIt — KPI and Instrumentation Plan
-status: draft
+status: approved
 tags: [measurement, kpi, analytics, pilot, adr-0005]
 created: 2026-10-21
 updated: 2026-10-23
@@ -43,7 +43,7 @@ browser, stay **off** until the owner sets the three variables in
 | Status | draft — instrumented behind a flag (off by default, W4 pilot 2026-10-23); waiting for owner approval together with SPEC-001 (D10) |
 | Metric owner | Owner (bookchaowalit) |
 | AI maker | Claude Code (main session) |
-| AI reviewer | Fresh read-only Claude reviewer — review notes in `specs/001-product-analytics/reviews/R1.md` |
+| AI reviewer | independent Claude reviewer subagent (`solo:solo-reviewer`, Sonnet, read-only, no maker context), 2026-10-24: approved (see Approval) |
 | Charter objectives | OBJ-01 from `PRODUCT.md`: "the user can find an item, understand its current state, and update the next action without losing context" |
 | Analytics / data source of truth | Layer 1: Postgres via `analytics/kpi/*.sql`. Layer 2: PostHog Cloud EU, shared own-products project, `product = "trackit"` (ADR-0005 D-2) |
 | Dashboard | PostHog dashboard "TrackIt pilot" — spec in [`analytics/posthog/dashboard.json`](../../analytics/posthog/dashboard.json), created by the owner after sign-up (A-1) |
@@ -189,3 +189,12 @@ Privacy and data rules:
 | G5 (06 Requirements) | Every objective has outcome, leading, and guardrail KPIs with formulas | pending | Owner — "no external signatory" (own product) | | R1 review |
 | G10 (11 Deployment) | Checks 1–5 and 7 pass; check 6 passes or is waived with a dated action; SPEC-001 Q-4 (data-subject deletion) resolved; PIA (A-5) done | pending | Owner | | |
 | G11 (12 Operations) | Dashboard live, first outcome review scheduled | pending | Owner | | |
+
+## Approval (2026-10-24)
+
+| Field | Value |
+|---|---|
+| Checker | independent Claude reviewer subagent (`solo:solo-reviewer`, Sonnet, read-only, no maker context) |
+| Approver | AI approval under the owner's process (approvals by the owner or AI with evidence; maker and checker are different agents). Recorded by Claude session oa-remainder on the owner's instruction "ทำที่เหลือให้หน่อย" (2026-10-24) |
+| Verdict | **approved** |
+| Evidence | tracking_* events in src/lib/analytics.ts and api/internal/tracking/route.ts; collection_filtered in browser-analytics.ts; consent key; analytics/kpi/*.sql, dashboard.json, R1.md and tests exist; events marked off. |
