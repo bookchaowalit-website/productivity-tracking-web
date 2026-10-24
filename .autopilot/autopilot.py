@@ -350,6 +350,9 @@ def run_url() -> str:
 # --------------------------------------------------------------------------- claude
 
 READ_ONLY_TOOLS = "Read,Glob,Grep,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(ls:*)"
+# Open issues filed from the Measure/Learn loop (architecture-docs
+# docs/lifecycle/OUTCOME-REVIEW-TO-BACKLOG.md). The planner sees them as signals.
+SIGNAL_LABELS = ("source:sentry", "source:outcome-review", "source:incident", "source:experiment")
 MAKER_TOOLS = ("Read,Edit,Write,Glob,Grep,Bash(npm test:*),Bash(npm run lint:*),Bash(npm run build:*),"
                "Bash(npx tsc:*),Bash(node --test:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),"
                "Bash(ls:*),Bash(mkdir:*)")
@@ -803,9 +806,14 @@ def plan(budget: Budget) -> None:
         log("planner: skipped (disabled or proposals already waiting)")
         return
     existing = gh_json("issue", "list", "--repo", REPO, "--state", "all", "-L", "60", "--label", CONFIG["backlog"]["label"], "--json", "number,title,state") or []
+    signals: dict[int, str] = {}
+    for label in SIGNAL_LABELS:
+        for i in gh_json("issue", "list", "--repo", REPO, "--state", "open", "-L", "30", "--label", label, "--json", "number,title") or []:
+            signals.setdefault(i["number"], f"- #{i['number']} [{label}] {i['title']}")
     lint = run("npm run lint", timeout=600)[1]
     r = claude(prompt("planner", max=CONFIG["planner"]["max_proposals"], lint=tail(lint, 60),
-                      existing="\n".join(f"- #{i['number']} [{i['state']}] {i['title']}" for i in existing) or "- none"),
+                      existing="\n".join(f"- #{i['number']} [{i['state']}] {i['title']}" for i in existing) or "- none",
+                      signals="\n".join(signals.values()) or "- none"),
                budget=budget, max_turns=LIMITS["reviewer_max_turns"], tools=READ_ONLY_TOOLS, role="planner")
     proposals = (last_json(r["text"]) or {}).get("proposals", [])[: CONFIG["planner"]["max_proposals"]]
     urls = [create_task_issue(p, "planner") for p in proposals]

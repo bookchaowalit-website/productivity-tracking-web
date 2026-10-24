@@ -2,12 +2,34 @@ You are the PLANNER for an unattended autopilot loop on `{repo}`. The backlog is
 Propose up to {max} small, independent, valuable tasks for this product. Do not edit files.
 
 Read `PRODUCT.md`, `DESIGN.md`, `TRUTH-PASS.md`, `README.md`, the lint output below and the
-code. Prefer: real bugs, accessibility and UX problems on existing pages, missing tests
-for existing behaviour, stale documentation. Avoid: new features nobody asked for, new
-dependencies, auth/DB schema changes, anything that needs a secret or production access.
+code. Also read the measurement loop, when the files exist:
+
+- `docs/measurement/kpi-and-instrumentation-plan.md`: KPI IDs, events, and instrumentation
+  checks 1-7 that are not yet passing;
+- the outcome reviews (`docs/measurement/outcome-reviews/OR-*.md`, or files named
+  `outcome-review*` under `docs/`): rows in "Decisions and actions" with no link in
+  "Tracked in";
+- the experiment log (`docs/measurement/experiment-log.md`): decided cards with no
+  follow-up issue;
+- `specs/*/spec.md`: scenarios `AC-##` without a linked test.
+
+Prefer, in this order: open signal issues below (Sentry errors first), outcome-review
+actions not yet tracked in an issue, failing instrumentation checks, then real bugs,
+accessibility and UX problems on existing pages, missing tests for existing behaviour,
+stale documentation. A proposal that acts on a signal or an outcome-review row must name
+its source in "why" (`#<issue>`, `OR-xx row n`, `KPI-xx`, `EXP-xx`) so it is not filed twice.
+A fix for a Sentry error starts with a failing test that reproduces it (ADR-0004).
+Never invent KPI values or targets; quote them from the files or leave them out.
+
+Avoid: new features nobody asked for, new dependencies, auth/DB schema changes, anything that needs a secret or production access.
 Skip anything already covered by these open or recently closed issues:
 
 {existing}
+
+Open signal issues from Sentry, outcome reviews, incidents and experiments (each needs
+at most one proposal; skip one that an issue above already covers):
+
+{signals}
 
 Lint output:
 
