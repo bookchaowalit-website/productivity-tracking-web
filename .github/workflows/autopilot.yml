@@ -73,7 +73,7 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
         run: |
-          python3 - <<'PY' >> "$GITHUB_ENV" || true
+          python3 -I - <<'PY' >> "$GITHUB_ENV" || true
           import json, os, time, urllib.request
           token, team = os.environ.get("VERCEL_TOKEN"), os.environ.get("VERCEL_TEAM_ID")
           if token and team:
