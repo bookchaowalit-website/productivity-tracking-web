@@ -47,7 +47,7 @@ browser, stay **off** until the owner sets the three variables in
 | Charter objectives | OBJ-01 from `PRODUCT.md`: "the user can find an item, understand its current state, and update the next action without losing context" |
 | Analytics / data source of truth | Layer 1: Postgres via `analytics/kpi/*.sql`. Layer 2: PostHog Cloud EU, shared own-products project, `product = "trackit"` (ADR-0005 D-2) |
 | Dashboard | PostHog dashboard "TrackIt pilot" — spec in [`analytics/posthog/dashboard.json`](../../analytics/posthog/dashboard.json), created by the owner after sign-up (A-1) |
-| Next review | OR-101 ([OUTCOME-REVIEW-001.md](OUTCOME-REVIEW-001.md)) — due go-live + 30 days; pending go-live |
+| Next review | OR-101 ([OUTCOME-REVIEW-001.md](OUTCOME-REVIEW-001.md)) — due 2026-11-25 (go-live 2026-10-26 + 30 days) |
 
 ## KPI tree
 

@@ -3,7 +3,7 @@ title: TrackIt — Outcome Review 001 (T+30)
 status: draft
 created: 2026-10-23
 updated: 2026-10-23
-description: First outcome review of the TrackIt KPI pilot, prepared before go-live. Due 30 days after the first production event; status stays "pending go-live" until then. Read by empire-backlog-sync once its status is "decided".
+description: First outcome review of the TrackIt KPI pilot, prepared before go-live. Due 30 days after the first production event; status stays "pending" until then (go-live 2026-10-26). Read by empire-backlog-sync once its status is "decided".
 ---
 
 # TrackIt — Outcome Review 001 (T+30)
@@ -22,10 +22,10 @@ uses OR-101…OR-199.
 | Review ID | OR-101 |
 | Project / product ID | TrackIt (`bookchaowalit-website/productivity-tracking-web`) |
 | Version | 0.1 |
-| Release(s) covered | First production deploy with analytics on (after the D10 review) — fill in at go-live |
-| Review period | go-live date – go-live + 30 days (pending go-live) |
+| Release(s) covered | Production redeploy of `fa13f95` with analytics on (dpl_Co5YsP3eWZdz3pu6xYaByX5fBA9y, 2026-10-26) |
+| Review period | 2026-10-26 – 2026-11-25 |
 | Review type | T+30 |
-| Status | pending go-live |
+| Status | pending (live since 2026-10-26; review due 2026-11-25) |
 | Owner | Owner (bookchaowalit) |
 | AI maker | Claude Code (session w4c-loop-pilot) prepared the empty review |
 | AI reviewer | Fresh read-only Claude reviewer at review time |
@@ -33,15 +33,15 @@ uses OR-101…OR-199.
 | Data snapshot | PostHog insight exports from `analytics/posthog/dashboard.json` and layer-1 SQL rows from `analytics/kpi/` — aggregates only |
 | Previous review | none (first review) |
 | Phase gate record | G11 record — fill in at review |
-| Due | go-live + 30 days; write the date here on go-live day (GO-LIVE.md step 8) |
+| Due | 2026-11-25 (go-live 2026-10-26 + 30 days) |
 
 ## Summary
 
 | Objective | Outcome KPI | Verdict | One-line reason |
 |---|---|---|---|
-| OBJ-01 | KPI-O-01 (north star) | pending go-live | No production events yet |
+| OBJ-01 | KPI-O-01 (north star) | pending | Live since 2026-10-26; first events reached PostHog, baseline still collecting |
 
-Overall decision: **pending go-live** — the review runs at T+30.
+Overall decision: **pending** — live since 2026-10-26; the review runs at T+30 (2026-11-25).
 
 ## KPI results
 
