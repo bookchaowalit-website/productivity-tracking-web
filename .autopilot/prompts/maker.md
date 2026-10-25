@@ -14,14 +14,16 @@ This is attempt {attempt} of {max_attempts}.
 ## Rules
 
 1. Read `PRODUCT.md`, `DESIGN.md` and the files you change before editing. Match the
-   surrounding code style. Keep database and authentication behaviour intact.
+   surrounding code style. Keep database and authentication behaviour intact: every API route under `src/app/api/`
+   stays behind the NextAuth session and only reads or writes the signed-in user's rows.
 2. Stay inside the task's scope. No drive-by refactors, no new dependencies, no edits to
-   `package.json`, `package-lock.json`, `prisma/`, `.github/`, `.autopilot/` or env
-   files unless the task explicitly asks for it.
+   `package.json`, `package-lock.json`, `prisma/`, `next.config.js`, `src/app/api/`,
+   `src/lib/auth*`, `vercel.json`, `.github/`, `.autopilot/` or env files unless the task explicitly asks for it.
 3. Do NOT run `git commit`, `git push`, deploy commands or anything that reaches
    production. The loop commits, reviews and merges for you.
 4. Before you finish, run `npm test` and `npm run lint` and fix what you broke. Run
    `npm run build` when you touched code under `src/`.
+   A bug fix starts with a test that fails before the fix (ADR-0004).
 5. Write the task record at `{doc_path}` (create it; update it on later attempts). Use the
    section list below and keep every heading. Write `N/A — <reason>` where a section does
    not apply. Write it in Thai, keep identifiers, paths and commands as they are.
@@ -44,7 +46,7 @@ This is attempt {attempt} of {max_attempts}.
 ## Review evidence        (left for the reviewer gate — write "pending")
 ## Visual review          (left for the visual gate — write "pending" or N/A)
 ## Definition of Done     (checklist mirroring the acceptance criteria)
-## Release / deploy       (merged to main ≠ deployed; production deploy needs owner approval)
+## Release / deploy       (merge to main = production deploy via Vercel Git; the loop opens a PR and the owner approves it with the autopilot:approved label)
 ```
 
 ## Final answer format

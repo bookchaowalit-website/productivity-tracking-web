@@ -2,7 +2,7 @@
 title: "Autopilot loop — pilot (productivity-tracking-web)"
 status: pilot
 created: 2026-10-18
-updated: 2026-10-18
+updated: 2026-10-25
 owner: bookchaowalit (approver) · Claude autopilot (maker) · Claude reviewer session แยก (checker)
 ---
 
@@ -19,7 +19,7 @@ pilot นี้ใช้กับ `bookchaowalit-website/productivity-tracking-w
 | เกณฑ์ | productivity-tracking-web | ev3-web (ตัวเปรียบเทียบ) |
 |---|---|---|
 | ความเสี่ยงต่อคนอื่น | showcase tier B ไม่มีผู้ใช้จริงหรือรายได้ (`TRUTH-PASS.md`) | งานลูกค้า ห้ามมี CI/CD และ deploy ต้องอนุมัติ |
-| merge = deploy? | **ไม่ใช่** (ไม่มี Git→Vercel) merge แล้ว production ยังไม่เปลี่ยน | – |
+| merge = deploy? | ตอนเริ่ม pilot **ไม่ใช่** · ตั้งแต่ D10 (2026-10-25) **ใช่** ดู "กติกาการ merge" | – |
 | visibility | public → ใช้ GitHub-hosted runner ได้ตาม CI policy | private |
 | เครื่องมือตรวจ | มี `npm test` (4 suites), lint, build | มีครบ แต่ใหญ่กว่า (130 commits) |
 | ขนาด | เล็ก (26 commits) วัดผลง่าย | ใหญ่ |
@@ -129,18 +129,33 @@ Depends on #12            ← (ถ้ามี) รอให้ #12 ปิดก
 
 ## กติกาการ merge
 
-ถ้า**ผ่านทุก gate** และเข้าเงื่อนไขทั้งหมดด้านล่าง loop จะ merge เอง (`git merge --no-ff` ใน clone ของ runner แล้ว push ตามกติกา merge-locally ไม่ใช้ `gh pr merge`):
+### ⚠️ ตั้งแต่ D10 (2026-10-25): merge = deploy production → ต้องอนุมัติทุก PR
 
-- risk เป็น `low` หรือ `medium`
-- ไม่แตะ protected paths: `prisma/`, `src/app/api/auth/`, `src/lib/auth*`, `package.json`, `package-lock.json`, `.github/`, `.autopilot/`, `next.config.js`, `LICENSE`, `.env*`
-- diff ไม่เกิน 400 บรรทัด
-- ถ้า main ขยับไปก่อน loop จะรัน test, lint และ build ใหม่บน tree ที่ merge แล้ว
+D10 ต่อ Vercel Git ให้ project `bookchaowalit-tracking-frontend` (production branch `main`, tracking.bookchaowalit.com) แล้ว
+การ merge เข้า `main` จึง**เท่ากับ deploy production** และใช้โควตา Vercel free plan **100 deploy/24 ชม. ที่ใช้ร่วมกันทั้ง team**
+เจ้าของเลือกข้อ (ก): "เปลี่ยนเป็น merge.mode pr-approval + quota gate แบบ W6 แล้วเปิดคืน" engine และ workflow จึง copy มาจาก W6 (portfolio-site-web / life-dashboard-web) พร้อม hardening ด้านความปลอดภัยของ W6 (`merge.mode: pr-approval`):
 
-ถ้าไม่เข้าเงื่อนไข loop จะ push branch แล้วเปิด PR พร้อมหลักฐาน ใส่ `needs-human` และแจ้ง Telegram
-คุณอนุมัติด้วยการใส่ label `autopilot:approved` ที่ PR แล้ว run ถัดไปจะ merge ให้
+1. งานที่ผ่านทุก gate จะถูก push เป็น branch `autopilot/<N>-…` แล้ว**เปิด PR เสมอ** พร้อมหลักฐานทุก gate ใส่ `autopilot:needs-human` ที่ issue และแจ้ง Telegram
+2. คุณอนุมัติด้วยการใส่ label **`autopilot:approved`** ที่ PR (ต้องเป็นบัญชี `bookchaowalit`; loop เช็กจาก event ของ issue) ถ้ามี push ใหม่หลังอนุมัติ head จะไม่ตรง `Autopilot-Head` และ label ถูกถอด
+3. run ถัดไป (หรือ Run workflow เอง) จะ**นับโควตา Vercel ก่อน** ใน step ที่แยกจาก agent: นับ deploy ทั้ง team ใน 24 ชม. ล่าสุด
+   ถ้า merge แล้วยังเหลือ**อย่างน้อย 20** (`merge.min_free_vercel_deploys`) จึง merge ใน clone ของ runner แล้ว push (merge-locally ไม่ใช้ `gh pr merge`)
+   ถ้าไม่พอ หรือนับไม่ได้ (ไม่มี `VERCEL_TOKEN` หรือ API error) ให้**เลื่อน**ไป run ถัดไป บันทึก `postponed_quota` ใน ledger และแจ้ง Telegram ⏳
+4. ถ้า `main` ขยับไปแล้ว loop จะรัน gate คำสั่งทั้งหมดใหม่บน tree ที่ merge แล้วก่อน push
+5. หลัง push Vercel deploy production เอง และ `deploy-smoke.yml` ตรวจ `/api/health` จาก deployment status
 
-**Deploy production ไม่อยู่ใน loop** repo นี้ไม่มี Git→Vercel การ merge จึงไม่เปลี่ยน production
-สรุปท้าย run จะบอกว่า main นำหน้า production อยู่ การ deploy ยังต้องให้คุณอนุมัติทุกครั้งตามกติกาเดิม
+protected paths (PR ที่แตะต้องให้คนดูเป็นพิเศษ): `prisma/`, `src/app/api/`, `src/lib/auth*`, `package.json`, `package-lock.json`, `.github/`, `.autopilot/`, `next.config.js`, `vercel.json`, `instrumentation*.ts`, `sentry.*`, `LICENSE`, `.env*`
+
+branch `autopilot/*` ไม่สร้าง preview deploy (`vercel.json` → `git.deploymentEnabled: {"autopilot/*": false}`) เพื่อไม่ให้กินโควตาร่วม
+PR ที่ autopilot เปิดด้วย `GITHUB_TOKEN` จะไม่ trigger workflow `CI` (ข้อจำกัดของ GitHub) gate ของ loop จึงเป็นตัวตรวจหลัก และ CI บน `main` ตรวจซ้ำหลัง merge
+`main` ของ repo นี้ไม่มี branch protection (2026-10-25) bot จึง push merge ได้เอง
+
+ห้ามเปลี่ยน `merge.mode` กลับเป็น `local-merge` จนกว่าเจ้าของจะตัดสินใจใหม่
+
+**ความเสี่ยงที่ยังเหลือ (เหมือน W6):** ทุกอย่างรันใน job เดียว user เดียว โค้ดที่ maker เขียนแล้ว gate รันจึงยังอาจเข้าถึง `GH_TOKEN` (push main = deploy ได้) ตอนนี้พึ่ง "หยิบเฉพาะ issue ที่ `bookchaowalit` หรือ bot เขียน" ทางแก้เต็ม = split-job (รอเจ้าของตัดสินใจ)
+
+### ก่อน D10 (2026-10-18 → 2026-10-24)
+
+loop merge เอง (`local-merge`) เมื่อ risk low/medium ไม่แตะ protected paths และ diff ≤ 400 บรรทัด เพราะตอนนั้นไม่มี Git→Vercel การ merge จึงไม่เปลี่ยน production
 
 ## Telegram
 

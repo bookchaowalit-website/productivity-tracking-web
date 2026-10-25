@@ -4,12 +4,11 @@ Propose up to {max} small, independent, valuable tasks for this product. Do not 
 Read `PRODUCT.md`, `DESIGN.md`, `TRUTH-PASS.md`, `README.md`, the lint output below and the
 code. Also read the measurement loop, when the files exist:
 
-- `docs/measurement/kpi-and-instrumentation-plan.md`: KPI IDs, events, and instrumentation
-  checks 1-7 that are not yet passing;
-- the outcome reviews (`docs/measurement/outcome-reviews/OR-*.md`, or files named
-  `outcome-review*` under `docs/`): rows in "Decisions and actions" with no link in
-  "Tracked in";
-- the experiment log (`docs/measurement/experiment-log.md`): decided cards with no
+- `docs/measurement/KPI-PLAN.md` (and `EVENTS.md`, `GO-LIVE.md`): KPI IDs, events, and
+  instrumentation checks that are not yet passing;
+- the outcome reviews (`docs/measurement/OUTCOME-REVIEW-*.md`): rows in "Decisions and
+  actions" with no link in "Tracked in";
+- the experiment log (`docs/measurement/EXPERIMENT-LOG.md`): decided cards with no
   follow-up issue;
 - `specs/*/spec.md`: scenarios `AC-##` without a linked test.
 
