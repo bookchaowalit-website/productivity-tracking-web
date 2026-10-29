@@ -435,8 +435,9 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="tracking-console min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b border-primary mx-auto"></div>
+        <div className="text-center" role="status">
+          {/* Reduced motion: the ring stays still; the text below says it is loading. */}
+          <div aria-hidden="true" className="animate-spin motion-reduce:animate-none rounded-full h-12 w-12 border-b border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Loading your tracking list...</p>
         </div>
       </div>
