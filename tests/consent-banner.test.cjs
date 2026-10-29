@@ -57,3 +57,30 @@ test('choices link reopens the banner', () => {
   assert.equal(opened, 1);
   assert.match(renderToStaticMarkup(element), /Analytics choices/);
 });
+
+test('banner reserves its height as bottom scroll space so focus is never hidden behind it (WCAG 2.4.11)', () => {
+  const observed = [];
+  globalThis.ResizeObserver = class {
+    constructor(cb) { this.cb = cb; observed.push(this); }
+    observe(el) { this.el = el; }
+    disconnect() { this.disconnected = true; }
+  };
+  globalThis.document = { documentElement: { style: {} }, body: { style: {} } };
+  try {
+    const el = { offsetHeight: 120 };
+    const cleanup = banner.reserveScrollSpace(el);
+    assert.equal(document.documentElement.style.scrollPaddingBottom, '152px');
+    assert.equal(document.body.style.paddingBottom, '152px');
+    el.offsetHeight = 200; // narrow screen: buttons stack and the banner grows
+    observed[0].cb();
+    assert.equal(document.documentElement.style.scrollPaddingBottom, '232px');
+    cleanup();
+    assert.equal(observed[0].disconnected, true);
+    assert.equal(document.documentElement.style.scrollPaddingBottom, '');
+    assert.equal(document.body.style.paddingBottom, '');
+    assert.equal(banner.reserveScrollSpace(null), undefined);
+  } finally {
+    delete globalThis.ResizeObserver;
+    delete globalThis.document;
+  }
+});

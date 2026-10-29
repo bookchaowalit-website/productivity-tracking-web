@@ -11,9 +11,34 @@ export function panelState(enabled: boolean, consent: Consent, reopened: boolean
   return consent === 'unknown' || reopened ? 'banner' : 'choices'
 }
 
+// WCAG 2.4.11: the fixed banner must not hide the focused control. While it is
+// shown, its height (plus the bottom gap) is reserved as scroll padding, so
+// focusing a control behind it scrolls the control above the banner, and the
+// same space is added below the page so the last row can scroll clear too.
+const BANNER_GAP_PX = 32
+
+export function reserveScrollSpace(el: HTMLElement | null) {
+  if (!el || typeof ResizeObserver === 'undefined') return
+  const root = document.documentElement
+  const apply = () => {
+    const space = `${el.offsetHeight + BANNER_GAP_PX}px`
+    root.style.scrollPaddingBottom = space
+    document.body.style.paddingBottom = space
+  }
+  apply()
+  const observer = new ResizeObserver(apply)
+  observer.observe(el)
+  return () => {
+    observer.disconnect()
+    root.style.scrollPaddingBottom = ''
+    document.body.style.paddingBottom = ''
+  }
+}
+
 export function ConsentBanner({ onAccept, onDecline }: { onAccept: () => void; onDecline: () => void }) {
   return (
     <div
+      ref={reserveScrollSpace}
       role="region"
       aria-label="Analytics consent"
       className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-xl rounded-md border border-border bg-background/95 p-4 text-sm shadow-lg backdrop-blur"
