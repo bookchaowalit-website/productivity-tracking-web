@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
+import './design-floor/tokens.css'
+import './app-theme.css'
 import "./globals.css"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
@@ -27,6 +29,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+        >
+          Skip to content
+        </a>
         {/* THESIS: TrackIt is a private memory room for unfinished media, not a generic admin grid. OWN-WORLD: a deep blue-black constellation with warm amber selection makes each item feel like a signal in depth. STORY: search the room, tune a status, return to the next thing. FIRST VIEWPORT: show the collection controls and live counts without exposing private content claims. FORM: seed ac6091c1 / assigned sparse console dashboard atmosphere, used as depth, particles, and selected warm signal. FINISH: thin telemetry rules, calm cards, keyboard-like labels, and no decorative metrics beyond the actual collection. */}
   {/* Structured Data for SEO */}
   <script

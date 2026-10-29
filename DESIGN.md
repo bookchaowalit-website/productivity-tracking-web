@@ -20,3 +20,16 @@ TrackIt is a private media memory room. The core job is to find the next thing t
 - Keep the empty, loading, and add-item states usable in the same visual world.
 - Avoid turning every control into a rounded card.
 
+
+## Design floor and tokens
+
+Design floor 1.0.0 ([ADR-0007](https://github.com/bookchaowalit/architecture-docs/blob/main/docs/architecture/decisions/ADR-0007-central-design-floor-and-tokens.md), WCAG 2.2 AA), checked with `design-floor.json` and `check.mjs` on `/` and `/more-projects`.
+
+- Vendored, unchanged: `src/app/design-floor/tokens.css` (header `css-vars` 1.0.0).
+- `src/app/app-theme.css` points the token names at the existing shadcn variables (`--color-bg: hsl(var(--background))`, `--color-accent: hsl(var(--primary))`, and so on). shadcn on Tailwind v3 keeps bare HSL triplets, so `aliases/shadcn.css` does not fit this app and is not used.
+- Single dark theme, no light mode. The interface is English only, so the Thai rules have nothing to check.
+- Floor fixes:
+  - Skip link to `#main-content` on both pages.
+  - Accessible names on the status and rating selects and on the favourite toggle (which also gets `aria-pressed`).
+  - The category tabs point `aria-controls` at the shared results region.
+- Waivers: none.

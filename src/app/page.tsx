@@ -474,7 +474,7 @@ export default function DashboardPage() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main id="main-content" className="container mx-auto px-4 py-8">
         {dataNotice && (
           <div className="tracking-console-notice mb-6 flex items-start gap-3 px-4 py-3" role="status">
             <span className="mt-1 size-2 shrink-0 rounded-full bg-primary" aria-hidden="true" />
@@ -520,43 +520,43 @@ export default function DashboardPage() {
           className="mb-8"
         >
           <TabsList className="flex w-full justify-start">
-            <TabsTrigger value="all" className="flex items-center gap-2">
+            <TabsTrigger value="all" aria-controls="tracking-results" className="flex items-center gap-2">
               <MoreHorizontal className="w-4 h-4" />
               All
             </TabsTrigger>
-            <TabsTrigger value="ANIME" className="flex items-center gap-2">
+            <TabsTrigger value="ANIME" aria-controls="tracking-results" className="flex items-center gap-2">
               {categoryIcons.ANIME}
               Anime
             </TabsTrigger>
-            <TabsTrigger value="MANGA" className="flex items-center gap-2">
+            <TabsTrigger value="MANGA" aria-controls="tracking-results" className="flex items-center gap-2">
               {categoryIcons.MANGA}
               Manga
             </TabsTrigger>
-            <TabsTrigger value="MOVIE" className="flex items-center gap-2">
+            <TabsTrigger value="MOVIE" aria-controls="tracking-results" className="flex items-center gap-2">
               {categoryIcons.MOVIE}
               Movies
             </TabsTrigger>
-            <TabsTrigger value="TV_SHOW" className="flex items-center gap-2">
+            <TabsTrigger value="TV_SHOW" aria-controls="tracking-results" className="flex items-center gap-2">
               {categoryIcons.TV_SHOW}
               TV Shows
             </TabsTrigger>
-            <TabsTrigger value="BOOK" className="flex items-center gap-2">
+            <TabsTrigger value="BOOK" aria-controls="tracking-results" className="flex items-center gap-2">
               {categoryIcons.BOOK}
               Books
             </TabsTrigger>
-            <TabsTrigger value="GAME" className="flex items-center gap-2">
+            <TabsTrigger value="GAME" aria-controls="tracking-results" className="flex items-center gap-2">
               {categoryIcons.GAME}
               Games
             </TabsTrigger>
-            <TabsTrigger value="PODCAST" className="flex items-center gap-2">
+            <TabsTrigger value="PODCAST" aria-controls="tracking-results" className="flex items-center gap-2">
               {categoryIcons.PODCAST}
               Podcasts
             </TabsTrigger>
-            <TabsTrigger value="WEBSITE" className="flex items-center gap-2">
+            <TabsTrigger value="WEBSITE" aria-controls="tracking-results" className="flex items-center gap-2">
               {categoryIcons.WEBSITE}
               Websites
             </TabsTrigger>
-            <TabsTrigger value="OTHER" className="flex items-center gap-2">
+            <TabsTrigger value="OTHER" aria-controls="tracking-results" className="flex items-center gap-2">
               {categoryIcons.OTHER}
               Other
             </TabsTrigger>
@@ -625,6 +625,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Items Grid */}
+        <div id="tracking-results">
         {filteredItems.length === 0 ? (
           <div className="text-center py-16">
             <div className="bg-muted rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
@@ -662,6 +663,8 @@ export default function DashboardPage() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        aria-label={tracking?.isFavorite ? `Remove ${item.title} from favorites` : `Add ${item.title} to favorites`}
+                        aria-pressed={tracking?.isFavorite || false}
                         onClick={() => handleToggleFavorite(item.id, tracking?.isFavorite || false)}
                       >
                         <Heart
@@ -740,6 +743,7 @@ export default function DashboardPage() {
                     <select
                       value={status || ''}
                       onChange={(e) => handleUpdateStatus(item.id, e.target.value as TrackingStatus)}
+                      aria-label={`Status for ${item.title}`}
                       className="flex-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                     >
                       <option value="">Set Status</option>
@@ -752,6 +756,7 @@ export default function DashboardPage() {
                     <select
                       value={tracking?.rating || ''}
                       onChange={(e) => e.target.value && handleRateItem(item.id, e.target.value as RatingScale)}
+                      aria-label={`Rating for ${item.title}`}
                       className="w-24 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                     >
                       <option value="">Rate</option>
@@ -767,6 +772,7 @@ export default function DashboardPage() {
             })}
           </div>
         )}
+        </div>
       </main>
 
       {/* Add Item Modal */}

@@ -1,0 +1,18 @@
+/*
+ * TrackIt console world (deep blue-black, warm amber signal), expressed in
+ * the design-floor token names (ADR-0007). shadcn on Tailwind v3 stores
+ * colours as bare HSL triplets, so the tokens read from those variables
+ * instead of replacing them; aliases/shadcn.css is not used here.
+ */
+
+:root {
+  --color-bg: hsl(var(--background));
+  --color-surface: hsl(var(--card));
+  --color-fg: hsl(var(--foreground));
+  --color-fg-muted: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--primary));
+  --color-accent-fg: hsl(var(--primary-foreground));
+  --color-border: hsl(var(--border));
+  --color-focus: hsl(var(--ring));
+  --color-danger: hsl(var(--destructive));
+}
