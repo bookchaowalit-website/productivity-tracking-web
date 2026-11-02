@@ -14,3 +14,17 @@ reason = "braces (build tooling only) has no fixed release; not reachable from u
 id = "GHSA-rj75-hqrm-r3gf"
 ignoreUntil = 2027-01-31
 reason = "postcss-selector-parser fix needs 7.x, incompatible with tailwindcss 3; build-time only on first-party CSS"
+
+# Build-time: @sentry/nextjs -> @sentry/bundler-plugins -> glob 13 finds source maps in our own
+# build output during `next build`. It never passes an AbortSignal, so the bypass has no effect.
+[[IgnoredVulns]]
+id = "GHSA-3g3m-2fjr-6pw4"
+ignoreUntil = 2027-02-01
+reason = "glob 13 abort-signal bypass; build-time only via the Sentry bundler plugin, which never aborts a walk. Fixed only in glob 14, outside the plugin's range. Added 2026-11-03."
+
+# Dev/build-time: minimatch (Sentry bundler plugin, typescript-estree, ESLint) matches patterns
+# written in this repository or the plugin, never user input.
+[[IgnoredVulns]]
+id = "GHSA-g3hv-75wg-m249"
+ignoreUntil = 2027-02-01
+reason = "minimatch pattern amplification DoS; reached only with repo- or tool-authored glob patterns at lint/build time. Fixed only in minimatch 11, outside every consumer's range. Added 2026-11-03."
