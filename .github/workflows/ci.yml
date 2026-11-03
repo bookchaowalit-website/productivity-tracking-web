@@ -30,7 +30,7 @@ jobs:
     # ADR-0007 design floor (12 rules, 5 widths) on a production build. The analytics flags make
     # the PDPA consent banner render as it does in production (placeholder key: nothing is sent
     # before consent, and CI never consents).
-    uses: bookchaowalit/platform-ci-workflows/.github/workflows/design-floor.yml@81b568fb872c94269ccbd3955b4f16bf025c767b # v1.5.3
+    uses: bookchaowalit/platform-ci-workflows/.github/workflows/design-floor.yml@d63b04cd4195905ea58a9b0ae8617f395d985ec9 # v1.5.4
     with:
       build-command: NEXT_TELEMETRY_DISABLED=1 npm run build
       build-env: |
