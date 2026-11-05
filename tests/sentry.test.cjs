@@ -89,6 +89,16 @@ describe('scrubEvent', () => {
     assert.equal(event.message, 'call api failed; are you sure? see item #5');
   });
 
+  test('strips quoted, parenthesised, punctuation-only and leading queries up to the next space', () => {
+    const event = sentry.scrubEvent({ message: '?key=secret at start; fetch("?token=secret") failed: api?token=(secret) and x?q=a\'secret\' (see /p?x=secret). Ref #access_token=secret ok' });
+    const glued = sentry.scrubEvent({ message: 'Failed https://example.com/api?token=(secret)' });
+    const punctuation = sentry.scrubEvent({ message: '/search?q=!!! and /api?password=secret!!! and /search#!!! and (/x?y=secret))' });
+    assert.equal(event.message, ' at start; fetch(") failed: api and x (see /p Ref  ok');
+    assert.equal(glued.message, 'Failed https://example.com/api');
+    assert.equal(punctuation.message, '/search and /api and /search and (/x)');
+    assert.ok(!/secret|!/.test(JSON.stringify([event, glued, punctuation])));
+  });
+
   test('removes local variables from every stack frame', () => {
     const event = sentry.scrubEvent({
       exception: {
