@@ -6,11 +6,13 @@ import "./globals.css"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Providers } from "./providers"
+import { SiteFooter, SITE_URL } from '@/components/site-footer'
 
 const inter = Inter({ subsets: ["latin"] })
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" })
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "TrackIt - Your Personal Content Tracker",
   description: "Track your manga, anime, movies, books, games, and more all in one place",
   keywords: ["tracking", "anime", "manga", "movies", "books", "games", "watch list"],
@@ -19,6 +21,8 @@ export const metadata: Metadata = {
     title: "TrackIt - Your Personal Content Tracker",
     description: "Track your manga, anime, movies, books, games, and more all in one place",
     type: "website",
+    url: SITE_URL,
+    siteName: 'TrackIt',
   },
 }
 
@@ -44,9 +48,9 @@ export default function RootLayout({
       __html: JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'WebApplication',
-        name: 'Tracking',
-        url: 'https://bookchaowalit-tracking.vercel.app',
-        description: 'Tracking by Bookchaowalit - A modern web application',
+        name: 'TrackIt',
+        url: SITE_URL,
+        description: 'TrackIt by Bookchaowalit - track manga, anime, movies, books, games and more in one place',
         applicationCategory: 'UtilitiesApplication',
         operatingSystem: 'Web',
         offers: {
@@ -74,13 +78,8 @@ export default function RootLayout({
       __html: JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'WebSite',
-        name: 'Tracking',
-        url: 'https://bookchaowalit-tracking.vercel.app',
-        potentialAction: {
-          '@type': 'SearchAction',
-          target: 'https://bookchaowalit-tracking.vercel.app/more-projects',
-          'query-input': 'required name=search_term'
-        }
+        name: 'TrackIt',
+        url: SITE_URL,
       })
     }}
   />
@@ -89,6 +88,7 @@ export default function RootLayout({
         <Analytics />
         <SpeedInsights />
         <Providers>{children}</Providers>
+        <SiteFooter />
       </body>
     </html>
   )

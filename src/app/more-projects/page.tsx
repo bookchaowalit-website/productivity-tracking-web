@@ -2,13 +2,15 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Related Projects - Tracking',
+  title: 'More projects - TrackIt',
   description: 'Explore more projects by Bookchaowalit. Discover our collection of web applications and tools.',
   keywords: ['related projects', 'more apps', 'Bookchaowalit', 'web applications'],
   openGraph: {
-    title: 'Related Projects - Tracking',
+    title: 'More projects - TrackIt',
     description: 'Explore more projects by Bookchaowalit',
     type: 'website',
+    url: 'https://tracking.bookchaowalit.com/more-projects',
+    siteName: 'TrackIt',
   },
 };
 
@@ -706,16 +708,16 @@ export default function RelatedProjectsPage() {
             
             
             <Link
-              href="https://bookchaowalit-tracking-frontend.vercel.app"
+              href="https://tracking.bookchaowalit.com"
               target="_blank"
               rel="noopener noreferrer"
               className="block p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300"
             >
               <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
-                Tracking
+                TrackIt
               </h3>
               <p className="text-sm text-blue-600 dark:text-blue-400">
-                https://bookchaowalit-tracking-frontend.vercel.app →
+                https://tracking.bookchaowalit.com →
               </p>
             </Link>
             
