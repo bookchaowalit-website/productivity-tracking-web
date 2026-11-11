@@ -78,6 +78,9 @@
   "overrides": {
     "sharp": "^0.35.5",
     "postcss": "^8.5.31",
-    "nodemailer": "^10.0.10"
+    "nodemailer": "^10.0.10",
+    "@sentry/bundler-plugins": {
+      "glob": "^14.0.2"
+    }
   }
 }
