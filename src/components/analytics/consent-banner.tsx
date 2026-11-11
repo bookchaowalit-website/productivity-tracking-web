@@ -11,59 +11,61 @@ export function panelState(enabled: boolean, consent: Consent, reopened: boolean
   return consent === 'unknown' || reopened ? 'banner' : 'choices'
 }
 
-// WCAG 2.4.11: the fixed banner must not hide the focused control. While it is
-// shown, its height (plus the bottom gap) is reserved as scroll padding, so
-// focusing a control behind it scrolls the control above the banner, and the
-// same space is added below the page so the last row can scroll clear too.
-const BANNER_GAP_PX = 32
-
-export function reserveScrollSpace(el: HTMLElement | null) {
-  if (!el || typeof ResizeObserver === 'undefined') return
-  const root = document.documentElement
-  const apply = () => {
-    const space = `${el.offsetHeight + BANNER_GAP_PX}px`
-    root.style.scrollPaddingBottom = space
-    document.body.style.paddingBottom = space
-  }
-  apply()
-  const observer = new ResizeObserver(apply)
-  observer.observe(el)
-  return () => {
-    observer.disconnect()
-    root.style.scrollPaddingBottom = ''
-    document.body.style.paddingBottom = ''
-  }
+// The banner sits in the page flow above the content (Providers renders it
+// first), so it never covers the stats or the list and never hides a focused
+// control. When reopened from "Analytics choices" it is scrolled into view and
+// focused, so the choices are on screen even on a long page.
+export function revealBanner(el: HTMLElement | null) {
+  if (!el) return
+  el.scrollIntoView?.({ block: 'start' })
+  el.focus({ preventScroll: true })
 }
 
-export function ConsentBanner({ onAccept, onDecline }: { onAccept: () => void; onDecline: () => void }) {
+export function ConsentBanner({
+  onAccept,
+  onDecline,
+  reveal = false,
+}: {
+  onAccept: () => void
+  onDecline: () => void
+  reveal?: boolean
+}) {
   return (
     <div
-      ref={reserveScrollSpace}
+      ref={reveal ? revealBanner : undefined}
+      tabIndex={-1}
       role="region"
       aria-label="Analytics consent"
-      className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-xl rounded-md border border-border bg-background/95 p-4 text-sm shadow-lg backdrop-blur"
+      className="relative z-50 mx-auto my-3 w-[calc(100%-2rem)] max-w-xl rounded-md border border-border bg-background p-3 text-sm shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Analytics</p>
-      <p className="mt-2 text-foreground">
-        May TrackIt count which features you use? Counts go to PostHog (EU servers) only if you allow it. Titles,
+      <p className="text-foreground">
+        <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Analytics · </span>
+        May TrackIt count which features you use? Only if you allow it, counts go to PostHog (EU servers). Titles,
         notes, searches, names and emails are never sent.
       </p>
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-        <Button variant="outline" size="default" onClick={onDecline}>Decline</Button>
-        <Button variant="outline" size="default" onClick={onAccept}>Allow analytics</Button>
+      <div className="mt-3 flex flex-row justify-end gap-2">
+        <Button variant="outline" size="default" className="min-h-11 flex-1 sm:flex-none" onClick={onDecline}>Decline</Button>
+        <Button variant="outline" size="default" className="min-h-11 flex-1 sm:flex-none" onClick={onAccept}>Allow analytics</Button>
       </div>
     </div>
   )
 }
 
+// "Analytics choices" sits in the page flow just above the footer (never
+// floating over content). It asks the provider at the top of the page to reopen
+// the banner through this window event.
+export const REOPEN_EVENT = 'trackit:analytics-choices'
+
 export function ConsentChoicesLink({ onOpen }: { onOpen: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="fixed bottom-2 left-2 z-40 rounded px-2 py-1 font-mono text-xs text-muted-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      Analytics choices
-    </button>
+    <div className="mx-auto max-w-[1200px] px-4 pb-2">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="inline-flex min-h-11 items-center rounded px-2 font-mono text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        Analytics choices
+      </button>
+    </div>
   )
 }
