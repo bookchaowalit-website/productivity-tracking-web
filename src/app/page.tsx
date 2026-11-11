@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { analytics } from '@/lib/browser-analytics'
+import { STATUS_LABELS, getProgress, scrollHints } from '@/lib/tracking-display'
 import {
   Plus,
   Search,
@@ -23,7 +24,8 @@ import {
   Headphones,
   Gamepad2,
   Globe,
-  MoreHorizontal
+  MoreHorizontal,
+  ChevronRight
 } from 'lucide-react'
 import { ContentCategory, TrackingStatus, RatingScale } from '@prisma/client'
 
@@ -146,14 +148,6 @@ const statusColors: Record<TrackingStatus, string> = {
   DROPPED: 'bg-red-500'
 }
 
-const statusLabels: Record<TrackingStatus, string> = {
-  PLAN_TO_WATCH: 'Plan to Watch',
-  WATCHING: 'Watching',
-  COMPLETED: 'Completed',
-  ON_HOLD: 'On Hold',
-  DROPPED: 'Dropped'
-}
-
 const _statusIcons: Record<TrackingStatus, React.ReactNode> = {
   PLAN_TO_WATCH: <Clock className="w-4 h-4" />,
   WATCHING: <PlayCircle className="w-4 h-4" />,
@@ -172,6 +166,28 @@ export default function DashboardPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [isDemoMode, setIsDemoMode] = useState(false)
   const [dataNotice, setDataNotice] = useState<string | null>(null)
+  const tabsRef = useRef<HTMLDivElement>(null)
+  const [tabHints, setTabHints] = useState({ left: false, right: false })
+
+  useEffect(() => {
+    const el = tabsRef.current
+    if (!el) return
+
+    const update = () => setTabHints(scrollHints(el))
+    update()
+    el.addEventListener('scroll', update, { passive: true })
+
+    let resizeObserver: ResizeObserver | undefined
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(update)
+      resizeObserver.observe(el)
+    }
+
+    return () => {
+      el.removeEventListener('scroll', update)
+      resizeObserver?.disconnect()
+    }
+  }, [loading])
 
   // The server derives the user from the session; the client never names one.
   const { data: session, status: authStatus } = useSession()
@@ -402,20 +418,6 @@ export default function DashboardPage() {
     await saveTracking('PUT', { itemId, rating })
   }
 
-  const getProgressText = (item: TrackingItem) => {
-    const progress = item.userTrackings[0]?.progress
-    if (!progress) return null
-
-    if (item.category === 'ANIME' || item.category === 'TV_SHOW') {
-      return `${progress}/${item.totalEpisodes || '?'} episodes`
-    } else if (item.category === 'MANGA') {
-      return `${progress}/${item.totalChapters || '?'} chapters`
-    } else if (item.category === 'BOOK') {
-      return `${progress}/${item.totalBooks || 1} books`
-    }
-    return `Progress: ${progress}`
-  }
-
   const renderStars = (rating: RatingScale | null) => {
     if (!rating) return null
     const ratingValue = Object.keys(RatingScale).indexOf(rating) + 1
@@ -520,7 +522,8 @@ export default function DashboardPage() {
           }}
           className="mb-8"
         >
-          <TabsList className="flex w-full justify-start">
+          <div className="tracking-tabs-rail">
+            <TabsList ref={tabsRef} className="flex w-full justify-start">
             <TabsTrigger value="all" aria-controls="tracking-results" className="flex items-center gap-2">
               <MoreHorizontal className="w-4 h-4" />
               All
@@ -561,10 +564,17 @@ export default function DashboardPage() {
               {categoryIcons.OTHER}
               Other
             </TabsTrigger>
-          </TabsList>
+            </TabsList>
+            {tabHints.left && <span aria-hidden="true" className="tracking-tabs-fade tracking-tabs-fade--left" />}
+            {tabHints.right && (
+              <span aria-hidden="true" className="tracking-tabs-fade tracking-tabs-fade--right">
+                <ChevronRight className="w-4 h-4" />
+              </span>
+            )}
+          </div>
 
           {/* Status Filter */}
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="tracking-console-status mt-4 flex flex-wrap gap-2">
             <Button
               variant={selectedStatus === 'all' ? 'default' : 'outline'}
               size="sm"
@@ -585,7 +595,7 @@ export default function DashboardPage() {
                   analytics.track('collection_filtered', { filter: 'status' })
                 }}
               >
-                {statusLabels[value]}
+                {STATUS_LABELS[value]}
               </Button>
             ))}
           </div>
@@ -601,7 +611,7 @@ export default function DashboardPage() {
           </Card>
           <Card className="tracking-stat">
             <CardHeader className="pb-2">
-              <CardDescription>Watching/Reading</CardDescription>
+              <CardDescription>In progress</CardDescription>
               <CardTitle className="text-3xl">
                 {trackingItems.filter(item => item.userTrackings[0]?.status === TrackingStatus.WATCHING).length}
               </CardTitle>
@@ -644,10 +654,17 @@ export default function DashboardPage() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="tracking-results-grid">
             {filteredItems.map((item) => {
               const tracking = item.userTrackings[0]
               const status = tracking?.status
+              const progressView = getProgress({
+                category: item.category,
+                progress: tracking?.progress,
+                totalEpisodes: item.totalEpisodes,
+                totalChapters: item.totalChapters,
+                totalBooks: item.totalBooks,
+              })
 
               return (
                 <Card key={item.id} className="tracking-card flex flex-col hover:shadow-lg transition-shadow">
@@ -710,32 +727,31 @@ export default function DashboardPage() {
                     {status && (
                       <div className="flex items-center gap-2 mb-2">
                         <div className={`w-2 h-2 rounded-full ${statusColors[status]}`} />
-                        <span className="text-sm font-medium">{statusLabels[status]}</span>
+                        <span className="text-sm font-medium">{STATUS_LABELS[status]}</span>
                       </div>
                     )}
 
                     {tracking?.rating && renderStars(tracking.rating)}
 
-                    {getProgressText(item) && (
+                    {progressView && (
                       <div className="mt-2">
                         <div className="flex items-center justify-between text-sm mb-1">
                           <span className="text-muted-foreground">Progress</span>
-                          <span className="font-medium">{getProgressText(item)}</span>
+                          <span className="font-medium">{progressView.text}</span>
                         </div>
-                        <div className="w-full bg-secondary rounded-full h-2">
-                          <div
-                            className="bg-primary h-2 rounded-full transition-all"
-                            style={{
-                              width: item.totalEpisodes
-                                ? `${((tracking.progress || 0) / item.totalEpisodes) * 100}%`
-                                : item.totalChapters
-                                ? `${((tracking.progress || 0) / item.totalChapters) * 100}%`
-                                : item.totalBooks
-                                ? `${((tracking.progress || 0) / item.totalBooks) * 100}%`
-                                : '0%'
-                            }}
-                          />
-                        </div>
+                        {progressView.percent !== null && (
+                          <div className="w-full bg-secondary rounded-full h-2">
+                            <div
+                              className="bg-primary h-2 rounded-full transition-all"
+                              role="progressbar"
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                              aria-valuenow={progressView.percent}
+                              aria-label={`Progress for ${item.title}`}
+                              style={{ width: `${progressView.percent}%` }}
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
                   </CardContent>
@@ -750,7 +766,7 @@ export default function DashboardPage() {
                       <option value="">Set Status</option>
                       {Object.entries(TrackingStatus).map(([_key, value]) => (
                         <option key={value} value={value}>
-                          {statusLabels[value]}
+                          {STATUS_LABELS[value]}
                         </option>
                       ))}
                     </select>

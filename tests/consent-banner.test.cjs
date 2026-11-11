@@ -1,5 +1,7 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
+const fs = require('node:fs');
+const path = require('node:path');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 const ts = require('typescript');
@@ -53,34 +55,38 @@ test('buttons call back with the choice', () => {
 test('choices link reopens the banner', () => {
   let opened = 0;
   const element = banner.ConsentChoicesLink({ onOpen: () => { opened += 1; } });
-  element.props.onClick();
+  element.props.children.props.onClick();
   assert.equal(opened, 1);
   assert.match(renderToStaticMarkup(element), /Analytics choices/);
 });
 
-test('banner reserves its height as bottom scroll space so focus is never hidden behind it (WCAG 2.4.11)', () => {
-  const observed = [];
-  globalThis.ResizeObserver = class {
-    constructor(cb) { this.cb = cb; observed.push(this); }
-    observe(el) { this.el = el; }
-    disconnect() { this.disconnected = true; }
-  };
-  globalThis.document = { documentElement: { style: {} }, body: { style: {} } };
-  try {
-    const el = { offsetHeight: 120 };
-    const cleanup = banner.reserveScrollSpace(el);
-    assert.equal(document.documentElement.style.scrollPaddingBottom, '152px');
-    assert.equal(document.body.style.paddingBottom, '152px');
-    el.offsetHeight = 200; // narrow screen: buttons stack and the banner grows
-    observed[0].cb();
-    assert.equal(document.documentElement.style.scrollPaddingBottom, '232px');
-    cleanup();
-    assert.equal(observed[0].disconnected, true);
-    assert.equal(document.documentElement.style.scrollPaddingBottom, '');
-    assert.equal(document.body.style.paddingBottom, '');
-    assert.equal(banner.reserveScrollSpace(null), undefined);
-  } finally {
-    delete globalThis.ResizeObserver;
-    delete globalThis.document;
-  }
+test('banner sits in the page flow above the content, so it covers nothing', () => {
+  const html = renderToStaticMarkup(React.createElement(banner.ConsentBanner, { onAccept() {}, onDecline() {} }));
+  const cls = html.match(/role="region"[^>]*class="([^"]+)"|class="([^"]+)"[^>]*role="region"/);
+  const classes = (cls[1] || cls[2]).split(/\s+/);
+  assert.ok(!classes.includes('fixed') && !classes.includes('absolute') && !classes.includes('sticky'), 'not floating over the page');
+  assert.match(html, /flex-row/, 'two choices side by side on every width');
+  assert.equal((html.match(/min-h-11/g) || []).length, 2, 'both choices are 44px targets');
+  const providers = fs.readFileSync(path.join(__dirname, '..', 'src/app/providers.tsx'), 'utf8');
+  assert.ok(providers.indexOf('<AnalyticsProvider />') < providers.indexOf('{children}'), 'banner renders before the page content');
+});
+
+test('choices link is a 44px target in the page flow after the content', () => {
+  const html = renderToStaticMarkup(React.createElement(banner.ConsentChoicesLink, { onOpen() {} }));
+  assert.match(html, /min-h-11/);
+  assert.doesNotMatch(html, /\b(fixed|absolute|sticky)\b/, 'not floating over the stats or list');
+  const providers = fs.readFileSync(path.join(__dirname, '..', 'src/app/providers.tsx'), 'utf8');
+  assert.ok(providers.indexOf('{children}') < providers.indexOf('<ConsentChoicesSlot />'), 'link renders after the page content');
+});
+
+test('reopened banner is scrolled into view and focused; a first-visit banner is not', () => {
+  const calls = [];
+  const el = { scrollIntoView: (o) => calls.push(['scroll', o.block]), focus: (o) => calls.push(['focus', o.preventScroll]) };
+  banner.revealBanner(el);
+  assert.deepEqual(calls, [['scroll', 'start'], ['focus', true]]);
+  assert.equal(banner.revealBanner(null), undefined);
+  const reopened = banner.ConsentBanner({ onAccept() {}, onDecline() {}, reveal: true });
+  assert.equal(reopened.props.ref, banner.revealBanner);
+  assert.equal(reopened.props.tabIndex, -1);
+  assert.equal(banner.ConsentBanner({ onAccept() {}, onDecline() {} }).props.ref, undefined);
 });
