@@ -9,6 +9,8 @@ export const metadata: Metadata = {
     title: 'More projects - TrackIt',
     description: 'Explore more projects by Bookchaowalit',
     type: 'website',
+    url: 'https://tracking.bookchaowalit.com/more-projects',
+    siteName: 'TrackIt',
   },
 };
 
