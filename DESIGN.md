@@ -6,7 +6,7 @@ TrackIt is a private media memory room. The core job is to find the next thing t
 ## Visual direction
 - Seed: ac6091c1 — assigned sparse console dashboard atmosphere.
 - Material: deep blue-black void, translucent depth planes, white particles, warm amber selection signal.
-- Typography: quiet mono labels with restrained serif item titles.
+- Typography: quiet mono labels use Geist Mono loaded via next/font (`--font-geist-mono`, set on `<html>` in `src/app/layout.tsx`); item titles use Georgia, serif.
 - Composition: controls and counts establish the room; items become signals in a calm constellation.
 
 ## Interaction
