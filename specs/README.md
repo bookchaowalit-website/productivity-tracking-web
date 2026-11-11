@@ -7,3 +7,4 @@ approved before code, one failing test per scenario before the implementation.
 |---|---|---|
 | [SPEC-001](./001-product-analytics/spec.md) | Server-side product analytics (ADR-0005 pilot) | approved, in progress |
 | [SPEC-002](./002-shared-ci-sentry/spec.md) | Shared CI, security scan and errors-only Sentry | implemented |
+| [SPEC-003](./003-tracking-cell/spec.md) | Move tracking data and logic into its own cell | proposed (owner approval) |
