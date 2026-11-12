@@ -27,7 +27,7 @@ import {
   MoreHorizontal,
   ChevronRight
 } from 'lucide-react'
-import { ContentCategory, TrackingStatus, RatingScale } from '@prisma/client'
+import { ContentCategory, TrackingStatus, RatingScale } from '@/lib/tracking-types'
 
 interface TrackingItem {
   id: string

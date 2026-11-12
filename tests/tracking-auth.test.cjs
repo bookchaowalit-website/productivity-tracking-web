@@ -4,21 +4,22 @@ const { NextRequest } = require('next/server');
 const { loadRoute } = require('./helpers/load-route.cjs');
 
 // End to end through both layers: the public route's fetch is wired to the real
-// internal route, whose Prisma client is a fixture with two users' data.
+// internal route, whose tracking cell client is a fixture with two users' data.
 const ITEMS = [
   { id: 'item-a', title: 'A private', category: 'ANIME', userTrackings: [{ userId: 'user-a', status: 'WATCHING', isFavorite: false }] },
   { id: 'item-b', title: 'B private', category: 'BOOK', userTrackings: [{ userId: 'user-b', status: 'COMPLETED', isFavorite: true }] },
 ];
 let findManyArgs = [];
-const prismaFixture = {
-  trackingItem: {
-    async findMany(args) {
-      findManyArgs.push(args);
-      const match = args.where.userTrackings.some;
-      return ITEMS
-        .filter((item) => item.userTrackings.some((t) => Object.entries(match).every(([key, value]) => t[key] === value)))
-        .map((item) => ({ ...item, userTrackings: item.userTrackings.filter((t) => t.userId === args.include.userTrackings.where.userId) }));
-    },
+// The tracking cell (SPEC-003) answers the list; the fixture records which user it was asked for.
+const cellFixture = {
+  async list(userId, filters) {
+    findManyArgs.push({ userId, filters });
+    return {
+      status: 200,
+      body: ITEMS
+        .filter((item) => item.userTrackings.some((t) => t.userId === userId && (!filters.isFavorite || t.isFavorite)))
+        .map((item) => ({ ...item, userTrackings: item.userTrackings.filter((t) => t.userId === userId) })),
+    };
   },
 };
 
@@ -28,7 +29,8 @@ const { route: publicRoute } = loadRoute('src/app/api/tracking/route.ts', {
   '@/lib/auth': { authOptions: {} },
 });
 const { route: internalRoute } = loadRoute('src/app/api/internal/tracking/route.ts', {
-  '@/lib/prisma': { __esModule: true, default: prismaFixture },
+  '@/lib/prisma': { __esModule: true, default: {} },
+  '@/lib/tracking-cell': { trackingCell: cellFixture },
   '@prisma/client': { ContentCategory: {}, TrackingStatus: {}, RatingScale: {}, Prisma: {} },
   // Analytics is covered by tracking-analytics.test.cjs; a no-op here.
   '@/lib/analytics': { track: async () => {} },
@@ -58,7 +60,7 @@ afterEach(() => {
 const signInAs = (id) => { session = { user: { id }, expires: '2999-01-01T00:00:00.000Z' }; };
 const read = (query = '') => publicRoute.GET(new NextRequest(`http://localhost/api/tracking${query}`));
 
-test('anonymous read returns 401 and never queries the database', async () => {
+test('anonymous read returns 401 and never calls the tracking cell', async () => {
   const response = await read('?userId=user-a');
   assert.equal(response.status, 401);
   assert.equal(findManyArgs.length, 0);
@@ -70,7 +72,7 @@ test('user A reads their own items', async () => {
   assert.equal(response.status, 200);
   const items = await response.json();
   assert.deepEqual(items.map((item) => item.id), ['item-a']);
-  assert.equal(findManyArgs[0].where.userTrackings.some.userId, 'user-a');
+  assert.equal(findManyArgs[0].userId, 'user-a');
 });
 
 test('user A cannot read user B, by naming B or by default', async () => {

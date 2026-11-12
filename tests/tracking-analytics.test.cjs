@@ -38,51 +38,16 @@ const maybeFail = (name) => {
 const findTracking = ({ userId, itemId }) => db.trackings.find((t) => t.userId === userId && t.itemId === itemId);
 const withItem = (tracking) => tracking && { ...tracking, item: db.items.find((item) => item.id === tracking.itemId) };
 const defined = (data) => Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
-const prismaFixture = {
-  user: { async findUnique({ where }) { return db.users.includes(where.id) ? { id: where.id } : null; } },
-  trackingItem: {
-    async findFirst({ where }) {
-      return db.items.find((item) => item.category === where.category
-        && item.title.toLowerCase() === where.title.equals.toLowerCase()) ?? null;
-    },
-    async create({ data }) {
-      maybeFail('trackingItem.create');
-      const { userTrackings, ...fields } = data;
-      const item = { id: `item-${db.items.length + 1}`, ...fields };
-      db.items.push(item);
-      const tracking = { ...userTrackings.create, itemId: item.id };
-      db.trackings.push(tracking);
-      return { ...item, userTrackings: [tracking] };
-    },
-  },
-  userTracking: {
-    async create({ data }) {
-      maybeFail('userTracking.create');
-      if (findTracking(data)) throw Object.assign(new Error('Unique constraint failed'), { code: 'P2002' });
-      db.trackings.push({ ...data });
-      return withItem(data);
-    },
-    async findUnique({ where }) { return withItem(findTracking(where.userId_itemId)) ?? null; },
-    async update({ where, data }) {
-      maybeFail('userTracking.update');
-      const tracking = findTracking(where.userId_itemId);
-      Object.assign(tracking, defined(data));
-      return withItem(tracking);
-    },
-    async delete({ where }) {
-      maybeFail('userTracking.delete');
-      const tracking = findTracking(where.userId_itemId);
-      db.trackings = db.trackings.filter((t) => t !== tracking);
-      return tracking;
-    },
-  },
-  activityLog: { async create({ data }) { maybeFail('activityLog.create'); db.logs.push(data); return data; } },
-};
+const { makeCellFixture } = require('./helpers/cell-fixture.cjs');
+// Sign-in data (the NextAuth user) stays in the web; tracking goes to the cell (SPEC-003).
+const prismaFixture = { user: { async findUnique({ where }) { return db.users.includes(where.id) ? { id: where.id } : null; } } };
+const cellFixture = makeCellFixture({ getDb: () => db, fail: maybeFail });
 
 let events;
 const recorder = { track: async (event, userId, props = {}) => { events.push({ event, userId, props }); } };
 const loadInternal = (analytics) => loadRoute('src/app/api/internal/tracking/route.ts', {
   '@/lib/prisma': { __esModule: true, default: prismaFixture },
+  '@/lib/tracking-cell': { trackingCell: cellFixture },
   '@prisma/client': prismaClientStub,
   '@/lib/analytics': analytics,
 }).route;
@@ -182,18 +147,22 @@ test('failures without a userId or secret send nothing (AC-07)', async () => {
   assert.deepEqual(events, []);
 });
 
-test('log failure after commit sends no failed event (AC-07)', async () => {
-  for (const [method, options, expected] of [
+test('an activity-log failure rolls the write back and counts as failed (AC-07, SPEC-003)', async () => {
+  // The cell writes the activity row in the same transaction as the change, so a log failure means
+  // nothing committed: 500, one tracking_write_failed, no success event.
+  for (const [method, options, success] of [
     ['POST', { body: { userId: 'user-a', title: 'Dune', category: 'BOOK' } }, 'tracking_item_added'],
     ['PUT', { body: { userId: 'user-a', itemId: 'item-a', status: 'COMPLETED' } }, 'tracking_updated'],
     ['DELETE', { query: '?userId=user-a&itemId=item-a' }, 'tracking_item_removed'],
   ]) {
+    resetDb();
     events = [];
     failNext['activityLog.create'] = true;
     const response = await call(internal, method, options);
     assert.equal(response.status, 500, method);
-    assert.ok(names().includes(expected), `${method} sent ${expected}`);
-    assert.ok(!names().includes('tracking_write_failed'), `${method} sent no failure`);
+    assert.ok(!names().includes(success), `${method} sent no success event`);
+    assert.deepEqual(events, [{ event: 'tracking_write_failed', userId: 'user-a', props: { method, status_code: 500 } }]);
+    assert.equal(findTracking({ userId: 'user-a', itemId: 'item-a' }).status, 'WATCHING', `${method} rolled back`);
   }
 });
 

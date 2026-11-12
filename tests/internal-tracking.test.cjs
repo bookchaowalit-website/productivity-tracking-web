@@ -16,6 +16,8 @@ const prismaStub = new Proxy({}, {
 });
 const stubs = {
   '@/lib/prisma': { __esModule: true, default: prismaStub },
+  // The tracking cell (SPEC-003) must not be reached either.
+  '@/lib/tracking-cell': { trackingCell: new Proxy({}, { get() { return async () => { dbCalls += 1; throw new Error('tracking cell must not be reached'); }; } }) },
   '@prisma/client': { ContentCategory: {}, TrackingStatus: {}, RatingScale: {}, Prisma: {} },
   // Analytics is covered by tracking-analytics.test.cjs; a no-op here.
   '@/lib/analytics': { track: async () => {} },

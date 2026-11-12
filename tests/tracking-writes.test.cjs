@@ -35,48 +35,10 @@ const resetDb = () => {
 const findTracking = ({ userId, itemId }) => db.trackings.find((t) => t.userId === userId && t.itemId === itemId);
 const withItem = (tracking) => tracking && { ...tracking, item: db.items.find((item) => item.id === tracking.itemId) };
 const defined = (data) => Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
-const prismaFixture = {
-  user: { async findUnique({ where }) { return db.users.includes(where.id) ? { id: where.id } : null; } },
-  trackingItem: {
-    async findFirst({ where }) {
-      return db.items.find((item) => item.category === where.category
-        && item.title.toLowerCase() === where.title.equals.toLowerCase()) ?? null;
-    },
-    async create({ data }) {
-      const { userTrackings, ...fields } = data;
-      const item = { id: `item-${db.items.length + 1}`, ...fields };
-      db.items.push(item);
-      const tracking = { ...userTrackings.create, itemId: item.id };
-      db.trackings.push(tracking);
-      writes.push(['create', tracking.userId, item.id]);
-      return { ...item, userTrackings: [tracking] };
-    },
-  },
-  userTracking: {
-    async create({ data }) {
-      if (findTracking(data)) throw Object.assign(new Error('Unique constraint failed'), { code: 'P2002' });
-      db.trackings.push({ ...data });
-      writes.push(['create', data.userId, data.itemId]);
-      return withItem(data);
-    },
-    async findUnique({ where }) { return withItem(findTracking(where.userId_itemId)) ?? null; },
-    async update({ where, data }) {
-      const tracking = findTracking(where.userId_itemId);
-      if (!tracking) throw new Error('Record to update not found');
-      Object.assign(tracking, defined(data));
-      writes.push(['update', tracking.userId, tracking.itemId]);
-      return withItem(tracking);
-    },
-    async delete({ where }) {
-      const tracking = findTracking(where.userId_itemId);
-      if (!tracking) throw new Error('Record to delete does not exist');
-      db.trackings = db.trackings.filter((t) => t !== tracking);
-      writes.push(['delete', tracking.userId, tracking.itemId]);
-      return tracking;
-    },
-  },
-  activityLog: { async create({ data }) { db.logs.push(data); return data; } },
-};
+const { makeCellFixture } = require('./helpers/cell-fixture.cjs');
+// Sign-in data (the NextAuth user) stays in the web; tracking goes to the cell (SPEC-003).
+const prismaFixture = { user: { async findUnique({ where }) { return db.users.includes(where.id) ? { id: where.id } : null; } } };
+const cellFixture = makeCellFixture({ getDb: () => db, writes: () => writes });
 
 let session = null;
 const { route: publicRoute } = loadRoute('src/app/api/tracking/route.ts', {
@@ -85,6 +47,7 @@ const { route: publicRoute } = loadRoute('src/app/api/tracking/route.ts', {
 });
 const { route: internalRoute } = loadRoute('src/app/api/internal/tracking/route.ts', {
   '@/lib/prisma': { __esModule: true, default: prismaFixture },
+  '@/lib/tracking-cell': { trackingCell: cellFixture },
   '@prisma/client': prismaClientStub,
   // Analytics is covered by tracking-analytics.test.cjs; a no-op here.
   '@/lib/analytics': { track: async () => {} },
@@ -201,7 +164,7 @@ test('own update, add and delete work and are keyed to the session user', async 
     title: 'Frieren', category: 'ANIME', genres: ['Fantasy'], year: 2023, externalUrl: 'https://example.test/frieren',
   });
   assert.equal(created.status, 201);
-  const newId = (await created.json()).id;
+  const newId = (await created.json()).itemId;
   assert.equal(trackingOf('user-a', newId).status, 'PLAN_TO_WATCH');
 
   const removed = await write('DELETE', { itemId: 'item-a' });

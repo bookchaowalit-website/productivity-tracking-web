@@ -54,8 +54,6 @@ model User {
 
   accounts      Account[]
   sessions      Session[]
-  trackingItems UserTracking[]
-  notes         TrackingNote[]
 
   @@index([email])
 }
@@ -101,85 +99,6 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-model TrackingItem {
-  id          String          @id @default(cuid())
-  title       String
-  description String?
-  imageUrl    String?
-  externalUrl String?
-  category    ContentCategory
-
-  // Metadata
-  author        String?
-  year          Int?
-  genres        String[] // Array of genre tags
-  totalEpisodes Int?
-  totalChapters Int?
-  totalBooks    Int?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  userTrackings UserTracking[]
-  notes         TrackingNote[]
-
-  @@unique([title, category], map: "title_category")
-  @@index([category])
-  @@index([title])
-}
-
-model UserTracking {
-  id         String         @id @default(cuid())
-  userId     String
-  itemId     String
-  status     TrackingStatus @default(PLAN_TO_WATCH)
-  rating     RatingScale?
-  progress   Int? // Current progress (episode/chapter/book number)
-  startDate  DateTime?
-  finishDate DateTime?
-  priority   Int? // 1-5 priority
-  isFavorite Boolean        @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  item TrackingItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, itemId])
-  @@index([userId])
-  @@index([itemId])
-  @@index([status])
-}
-
-model TrackingNote {
-  id        String  @id @default(cuid())
-  userId    String
-  itemId    String?
-  content   String  @db.Text
-  isPrivate Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  item TrackingItem? @relation(fields: [itemId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([itemId])
-}
-
-model ActivityLog {
-  id        String          @id @default(cuid())
-  userId    String
-  action    String // e.g., "added_to_list", "completed", "rated"
-  itemTitle String
-  category  ContentCategory
-  details   String?         @db.Text
-
-  createdAt DateTime @default(now())
-
-  @@index([userId])
-  @@index([createdAt])
-}
+// Tracking data (items, per-user tracking, notes, activity) moved to the tracking cell on 2026-11-12
+// (SPEC-003, bookchaowalit/productivity-tracking-api). The enums stay: the UI types use them.
+// The old tables stay in the database untouched as a rollback copy until the owner removes them.

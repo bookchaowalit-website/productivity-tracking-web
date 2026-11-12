@@ -1,6 +1,6 @@
 ---
 title: "SPEC-003 — Move tracking data and logic out of Next.js into its own cell (productivity-tracking-api)"
-status: proposed
+status: approved, implemented
 tags: [spec, sdd, cells, backend, prisma, gateway, pdpa]
 created: 2026-11-12
 updated: 2026-11-12
@@ -18,7 +18,7 @@ there as `direct-db` and `logic-in-bff`.
 | Field | Value |
 |---|---|
 | Spec ID / version | SPEC-003 / 0.1 |
-| Status | **proposed — waiting for owner approval** (personal data + new hosted parts, ADR-0011 freeze proposed) |
+| Status | **approved by the owner 2026-11-12** ("อนุมัติ SPEC-003"; Q2 = keep NextAuth, the recommended option); implemented 2026-11-12 |
 | Repository | bookchaowalit-website/productivity-tracking-web (+ new `bookchaowalit/productivity-tracking-api`) |
 | Maker | Claude Code (cell audit session) |
 | Approver | Owner (bookchaowalit) |
@@ -75,9 +75,18 @@ there as `direct-db` and `logic-in-bff`.
 | Q1 | Approve building the cell (personal data, one Neon project, one Railway service) despite the proposed ADR-0011 freeze? | approve / keep the app as it is (accept `direct-db`) |
 | Q2 | Sign-in: keep NextAuth in the web for now, or wait until identity signs end users in? | keep NextAuth (recommended) / wait |
 
+## Implementation (2026-11-12)
+
+- Cell: `bookchaowalit/productivity-tracking-api` (Neon `productivity-tracking-api`, Railway `tracking-api`, serverless,
+  gateway route `tracking`, origin lock `report`). 35 tests on a real PostgreSQL, coverage 94 %.
+- Identity: service client `tracking-web` (audience `tracking-api`, scopes `tracking.items:read|write`).
+- The user travels in the path (`/v1/users/{userId}/tracking`) because the gateway forwards only standard headers.
+- Web: `src/lib/tracking-cell.ts` + the internal route call the cell; analytics and the NextAuth user check stay
+  here; Prisma keeps only the NextAuth models; `prisma/seed.ts` removed.
+
 ## การอนุมัติ
 
 | Role | Status | Date | Sign-off |
 |---|---|---|---|
-| Owner (Accountable approver) | รอพิจารณา | — | — |
+| Owner (Accountable approver) | อนุมัติ | 2026-11-12 | "อนุมัติ SPEC-003" |
 | Maker (Claude Code) | ร่างแล้ว | 2026-11-12 | — |

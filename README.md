@@ -2,6 +2,15 @@
 
 A comprehensive web application for tracking your manga, anime, movies, books, games, podcasts, websites, and more. Built with Next.js 14, Tailwind CSS, shadcn/ui, and PostgreSQL.
 
+
+> **Backend (since 2026-11-12, SPEC-003):** tracking data and rules live in the tracking cell
+> [bookchaowalit/productivity-tracking-api](https://github.com/bookchaowalit/productivity-tracking-api), reached at
+> `https://gateway.bookchaowalit.com/v1/tracking` with a platform-identity token (service client `tracking-web`).
+> This app keeps sign-in (NextAuth tables in its own Postgres) and product analytics. Configure
+> `TRACKING_API_URL`, `TRACKING_CLIENT_ID` and `TRACKING_CLIENT_PRIVATE_KEY_PEM_B64` (Infisical
+> `/productivity-tracking-api`). `DATABASE_URL` is now only for NextAuth. `npm run seed` was removed with the
+> Prisma tracking models; the old tracking tables stay in the database as a rollback copy.
+
 ## 🚀 Features
 
 - **Multi-Category Tracking**: Track 9 different content categories
