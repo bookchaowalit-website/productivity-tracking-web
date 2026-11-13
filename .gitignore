@@ -53,3 +53,7 @@ logs
 tmp/
 temp/
 .env*
+
+# Storybook
+storybook-static/
+*storybook.log
