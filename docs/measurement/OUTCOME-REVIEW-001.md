@@ -25,7 +25,7 @@ uses OR-101…OR-199.
 | Release(s) covered | Production redeploy of `fa13f95` with analytics on (dpl_Co5YsP3eWZdz3pu6xYaByX5fBA9y, 2026-10-26) |
 | Review period | 2026-10-26 – 2026-11-25 |
 | Review type | T+30 |
-| Status | review-ready (data filled 2026-11-20 from PostHog; owner decision pending, due 2026-11-25) |
+| Status | pending owner decision (data filled 2026-11-20 from PostHog; due 2026-11-25) |
 | Owner | Owner (bookchaowalit) |
 | AI maker | Claude Code (session w4c-loop-pilot) prepared the empty review |
 | AI reviewer | Fresh read-only Claude reviewer at review time |
@@ -84,9 +84,9 @@ change. One action per row; write the task key or issue into "Tracked in".
 
 | # | Decision | Type | Owner | Due | Tracked in |
 |---|---|---|---|---|---|
-| 1 | (proposed) Run the layer-1 SQL (KPI-O-01, L-01, L-03) with the read-only role and paste the rows here | backlog item | Claude | 2026-11-25 | outcome-review/OR-101#1 |
-| 2 | (proposed) Keep all KPIs; take the baseline at OR-102 (T+60, 2026-12-25) | KPI definition change | Owner | 2026-11-25 | outcome-review/OR-101#2 |
-| 3 | (proposed) Add a cookieless traffic count (Vercel Web Analytics or edge request count) so "no visitors" and "no consent" can be told apart | discovery question | Owner | 2026-12-05 | outcome-review/OR-101#3 |
+| 1 | [proposed] Run the layer-1 SQL (KPI-O-01, L-01, L-03) with the read-only role and paste the rows here | backlog item | Claude | 2026-11-25 | outcome-review/OR-101#1 |
+| 2 | [proposed] Keep all KPIs; take the baseline at OR-102 (T+60, 2026-12-25) | KPI definition change | Owner | 2026-11-25 | outcome-review/OR-101#2 |
+| 3 | [proposed] Add a cookieless traffic count (Vercel Web Analytics or edge request count) so "no visitors" and "no consent" can be told apart | discovery question | Owner | 2026-12-05 | outcome-review/OR-101#3 |
 
 Continuous discovery: open questions from this review go here.
 
