@@ -1,8 +1,8 @@
 ---
 title: TrackIt — Outcome Review 001 (T+30)
-status: draft
+status: decided
 created: 2026-10-23
-updated: 2026-11-25
+updated: 2026-11-26
 description: First outcome review of the TrackIt KPI pilot, prepared before go-live. Due 30 days after the first production event; status stays "pending" until then (go-live 2026-10-26). Read by empire-backlog-sync once its status is "decided".
 ---
 
@@ -21,11 +21,11 @@ uses OR-101…OR-199.
 |---|---|
 | Review ID | OR-101 |
 | Project / product ID | TrackIt (`bookchaowalit-website/productivity-tracking-web`) |
-| Version | 0.3 |
+| Version | 1.0 |
 | Release(s) covered | Production redeploy of `fa13f95` with analytics on (dpl_Co5YsP3eWZdz3pu6xYaByX5fBA9y, 2026-10-26) |
 | Review period | 2026-10-26 – 2026-11-25 |
 | Review type | T+30 |
-| Status | pending owner decision (data refreshed 2026-11-25 for the full period; due 2026-11-25) |
+| Status | decided 2026-11-26 (owner accepted all proposed decisions) |
 | Owner | Owner (bookchaowalit) |
 | AI maker | Claude Code (session w4c-loop-pilot) prepared the empty review |
 | AI reviewer | Fresh read-only Claude reviewer at review time |
@@ -43,7 +43,7 @@ Data snapshot: PostHog project 318524 (EU), HogQL over `events` from 2026-10-20 
 |---|---|---|---|
 | OBJ-01 | KPI-O-01 (north star) | off-track | Database: 0 tracking writes in the period (2 users ever, last write 2026-10-24); PostHog: 1 test pageview |
 
-Overall decision (proposed, owner to confirm): **not used → decide the product's role** — the
+Overall decision (owner accepted 2026-11-26): **not used → decide the product's role** — the
 database shows no use at all in the period, so empty PostHog data is not a consent problem. Either
 keep TrackIt as a portfolio demo and stop its KPI loop, or find real users before OR-102.
 
@@ -92,9 +92,9 @@ change. One action per row; write the task key or issue into "Tracked in".
 
 | # | Decision | Type | Owner | Due | Tracked in |
 |---|---|---|---|---|---|
-| 1 | [done 2026-11-25] Layer-1 counts run (see note under KPI results); follow-up: rewrite `analytics/kpi/*.sql` for the cell schema | backlog item | Claude | 2026-12-05 | outcome-review/OR-101#1 |
-| 2 | [proposed] Keep TrackIt as a portfolio demo: stop the KPI loop after this review (no OR-102) unless real users appear | roadmap change | Owner | 2026-11-30 | outcome-review/OR-101#2 |
-| 3 | [proposed] Add a cookieless traffic count (Vercel Web Analytics or edge request count) so "no visitors" and "no consent" can be told apart | discovery question | Owner | 2026-12-05 | outcome-review/OR-101#3 |
+| 1 | Rewrite `analytics/kpi/*.sql` for the tracking cell schema (layer-1 counts were run by hand 2026-11-25, see KPI results) | backlog item | Claude | 2026-12-05 | outcome-review/OR-101#1 |
+| 2 | Keep TrackIt as a portfolio demo: stop the KPI loop after this review (no OR-102) unless real users appear | roadmap change | Owner | 2026-11-30 | outcome-review/OR-101#2 |
+| 3 | Add a cookieless traffic count (Vercel Web Analytics or edge request count) so "no visitors" and "no consent" can be told apart | discovery question | Owner | 2026-12-05 | outcome-review/OR-101#3 |
 
 Continuous discovery: open questions from this review go here.
 
@@ -104,5 +104,5 @@ Continuous discovery: open questions from this review go here.
 
 | Decision | Approver | Date | Evidence |
 |---|---|---|---|
-| accept review and decisions | Owner | — | — |
-| next review scheduled (OR-102, T+60) | Owner | — | task `outcome-review/trackit/<date>` |
+| accept review and decisions | Owner | 2026-11-26 | owner reply in the Claude Code session, 2026-11-26 ("ตามข้อเสนอ") |
+| next review scheduled (OR-102, T+60) | Owner | 2026-11-26 | not scheduled: decision #2 stops the KPI loop unless real users appear |
