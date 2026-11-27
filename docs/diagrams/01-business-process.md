@@ -1,6 +1,6 @@
 # 01 — Business process (As-Is / To-Be)
 
-productivity-tracking-web (TrackIt) คือเว็บติดตามรายการสื่อหลายประเภท (อนิเมะ มังงะ หนัง หนังสือ เกม ฯลฯ) ส่วนตัว ผู้ใช้ที่ยังไม่ล็อกอินเห็นพื้นที่เดโมที่เก็บใน localStorage ส่วนผู้ล็อกอิน (NextAuth) อ่านเขียนรายการผ่าน `/api/tracking` ซึ่งส่งต่อไปยัง tracking cell หลัง gateway เว็บเองเก็บเฉพาะข้อมูลล็อกอินใน Postgres ผ่าน Prisma และส่ง analytics เฉพาะเมื่อเปิดใช้และผู้ใช้ยินยอม
+productivity-tracking-web (TrackIt) คือเว็บติดตามรายการสื่อหลายประเภท (อนิเมะ มังงะ หนัง หนังสือ เกม ฯลฯ) ส่วนตัว ผู้ใช้ที่ยังไม่ล็อกอินเห็นพื้นที่เดโมที่เก็บใน localStorage ส่วนผู้ล็อกอิน (NextAuth) อ่านเขียนรายการผ่าน `/api/tracking` ซึ่งส่งต่อไปยัง tracking cell หลัง gateway เว็บเองเก็บเฉพาะข้อมูลล็อกอินใน Postgres ผ่าน Prisma และส่ง analytics เฉพาะเมื่อเปิดใช้: event ฝั่งเบราว์เซอร์ต้องผ่านแบนเนอร์ยินยอม ส่วน event ฝั่งเซิร์ฟเวอร์ของผู้ล็อกอิน (ส่งพร้อม `User.id` เมื่อมี PostHog key) ไม่ตรวจแบนเนอร์ (`src/lib/analytics.ts`)
 
 Last reviewed: 2026-11-28 · commit `a9bd186`
 
@@ -15,19 +15,18 @@ flowchart TD
   BAPI --> GUARD{"มี session? userId ตรงกับ session? write ผ่าน CSRF, JSON, zod strict, ไม่เกิน 16 KB?"}
   GUARD -->|ไม่| REFUSE["ตอบ 401 / 403 / 405 / 413 / 415 / 400"]
   GUARD -->|ผ่าน| FWD["ส่งต่อ /api/internal/tracking พร้อม x-internal-secret, origin จาก config เท่านั้น"]
-  FWD -->|ไม่มี secret หรือ origin ไม่ใช่ HTTPS| E503["503 Service unavailable"]
-  FWD -->|ต่อไม่ได้หรือ redirect| E502["502 Bad gateway"]
-  FWD --> INT["internal route: ตรวจ secret แล้วเรียก trackingCell"]
-  INT --> USER["POST เท่านั้น: prisma.user ต้องมีอยู่ ไม่เจอ = 404"]
-  USER --> TOKEN["trackingCell ขอ access token: client_credentials + private_key_jwt จาก identity service"]
-  TOKEN --> CELL["gateway /v1/users/userId/tracking แล้ว tracking cell productivity-tracking-api (repo อื่น): CRUD รายการ และ activity log"]
-  CELL -->|"สำเร็จ"| TRACK["track(): ส่ง event ที่ allow-list ไป PostHog ถ้าเปิดใช้ ล้มเหลวหรือ timeout 2 วินาทีถูกกลืน"]
+  FWD -->|"ไม่มี secret หรือ origin ไม่ใช่ HTTPS (ยกเว้น HTTP กับ localhost / 127.0.0.1 / [::1]) = 503; ต่อไม่ได้หรือ redirect = 502"| E503["503 / 502"]
+  FWD --> INT["internal route: ตรวจ secret (POST ตรวจ prisma.user ต้องมีอยู่ ไม่เจอ = 404) แล้วเรียก trackingCell"]
+  INT --> TOKEN["trackingCell ขอ access token: client_credentials + private_key_jwt จาก identity service"]
+  TOKEN --> CELL["gateway /v1/tracking/v1/users/userId/tracking (ค่าเริ่มต้น; prefix /v1/tracking มาจาก base URL) แล้ว tracking cell productivity-tracking-api (repo อื่น): CRUD รายการ และ activity log"]
+  CELL -->|"POST/PUT/DELETE สำเร็จ (GET ไม่ส่ง event)"| TRACK["track(): ส่ง event ที่ allow-list ไป PostHog ถ้าเปิดใช้ ล้มเหลวหรือ timeout 2 วินาทีถูกกลืน (PUT ส่งเฉพาะเมื่อมีฟิลด์เปลี่ยนหรือเสร็จรายการ)"]
   CELL -->|"409 ซ้ำ / 404 ไม่ใช่ของตน / 400"| MAP["แปลงเป็นข้อความ error ของเว็บ"]
   CELL -->|"อื่นๆ หรือ timeout 10 วินาที"| E500["500 และ track tracking_write_failed ถ้ายังไม่ commit"]
   V --> BANNER["แบนเนอร์ยินยอม: ก่อนเลือกไม่โหลด SDK ยอมรับแล้ว page view และ identify ฝั่งเบราว์เซอร์"]
-  V --> SENTRY["error เท่านั้นส่ง Sentry เมื่อมี DSN, scrubEvent ตัดข้อมูลส่วนบุคคล"]
-  KPI["analytics/kpi/*.sql รันมือ อ่านตาราง User และ UserTracking เดิม"] -.-> DB["Postgres ของเว็บ"]
-  CI["push/PR เข้า main: CI กลาง + security scan"] --> DEPLOY["Vercel Git deploy แล้ว deploy-smoke ตรวจ /api/health และ /more-projects [ต้องยืนยัน]"]
+  V --> SENTRY["error เท่านั้นส่ง Sentry เมื่อมี DSN, scrubEvent ลบ request/user/breadcrumbs/extra, ตัด query/fragment ใน URL และข้อความ error (ข้อมูลอื่นในข้อความ error ยังผ่านไปได้)"]
+  KPI["analytics/kpi/*.sql ยังชี้ตาราง User และ UserTracking เดิม ซึ่งเป็นสำเนา rollback ใน Postgres ของเว็บ (ข้อมูลจริงย้ายไป cell แล้ว); รอบวัดล่าสุด 2026-11-25 นับด้วยมือบน tracking cell แบบ read-only (OUTCOME-REVIEW-001)"] -.-> DB["Postgres ของเว็บ"]
+  PUSH["push เข้า main"] --> CI["CI กลาง + security scan (ตรวจอย่างเดียว ไม่มี job deploy)"]
+  PUSH --> DEPLOY["Vercel Git integration deploy แล้ว deploy-smoke ตรวจ /api/health และ /more-projects เมื่อได้ deployment_status [ต้องยืนยัน: PRODUCT.md และ GO-LIVE.md ไม่ตรงกัน]"]
   DEPLOY --> V
 ```
 
@@ -50,7 +49,8 @@ flowchart TD
   CELL --> TRACK["track(): event ที่ allow-list ไป PostHog"]
   V --> BANNER["แบนเนอร์ยินยอม"]
   V --> COUNT["นับทราฟฟิกแบบไม่ใช้คุกกี้ เพื่อแยก ไม่มีผู้เข้า กับ ไม่ยินยอม (OR-101 ข้อ 3)"]
-  KPI["analytics/kpi/*.sql เขียนใหม่ให้อ่าน schema ของ tracking cell (OR-101 ข้อ 1)"] -.-> CELLDB["ฐานข้อมูลของ tracking cell"]
+  KPI["analytics/kpi/*.sql เขียนใหม่ให้อ่าน schema ของ tracking cell (OR-101 ข้อ 1)"] -.-> CELLDB["ฐานข้อมูลของ tracking cell (activity และ tracking)"]
+  KPI -.->|"ตัวหาร User.createdAt: cell ไม่มีตารางผู้ใช้ จึงต้องอ่านจาก Postgres ของเว็บ [ต้องยืนยัน]"| DB["Postgres ของเว็บ (User)"]
   STOP["หยุด loop KPI หลังรีวิว OR-101 ไม่เปิด OR-102 จนกว่าจะมีผู้ใช้จริง (OR-101 ข้อ 2)"] -.-> KPI
 ```
 
